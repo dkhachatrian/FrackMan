@@ -111,7 +111,7 @@ bool StudentWorld::hasPlayerWon() const
 //x and y start at the topmost or leftmost square of dirt to be removed depending on the direction of movement:
 // "up or down" --> x is leftmost
 // "left or right" --> y is topmost
-bool StudentWorld::removeDirt(const GraphObject::Direction dir, const int& x, const int& y)
+bool StudentWorld::removeDirt(const GraphObject::Direction dir, const CoordType& x, const CoordType& y)
 {
 	bool result = false;
 
@@ -268,9 +268,45 @@ double distance(int x1, int y1, int x2, int y2)
 }
 
 
-//PRECONDITON:
 
-bool StudentWorld::canMoveInDirection(const GraphObject::Direction moveDir, Actor* caller)
+bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir)
+{
+	int x_n = caller->getX();
+	int y_n = caller->getY();
+
+
+	//make "effective" x,y coordinates due to sprites
+	//(i.e., shift y up SPRITE_HEIGHT squares if trying to go up
+	//			or x right SPRITE_WIDTH squares if trying to go right)
+
+	bool transformed = caller->sendToEffectiveLocation(x_n, y_n, dir);
+
+	bool a = !caller->moveMatchesDir(dir);
+	bool b = !canMoveInDirection(caller, dir);
+
+	if (a || b)
+	{
+		caller->setDirection(dir);
+		caller->moveTo(caller->getX(), caller->getY()); //"move" with no change in coordinates to have animation play
+		return false; //didn't move
+	}
+	//otherwise
+
+
+	//fix the affected coordinates if necessary
+	if (transformed)
+		caller->reverseTransform(x_n, y_n, dir);
+
+	//alright
+	caller->moveTo(x_n, y_n);
+	return true;
+
+}
+
+
+
+//PRECONDITON:
+bool StudentWorld::canMoveInDirection(DynamicObject* caller, const GraphObject::Direction moveDir)
 {
 
 	int x_t = caller->getX();
@@ -278,7 +314,7 @@ bool StudentWorld::canMoveInDirection(const GraphObject::Direction moveDir, Acto
 
 
 
-	bool transformed = caller->getEffectiveLocation(x_t, y_t, moveDir);
+	bool transformed = caller->sendToEffectiveLocation(x_t, y_t, moveDir);
 
 	switch (moveDir)
 	{
@@ -320,7 +356,7 @@ bool StudentWorld::canMoveInDirection(const GraphObject::Direction moveDir, Acto
 	//update (x,y) and get out
 
 	if(transformed)
-		caller->reverseTransform(x_t, y_t, moveDir); //fixes the possible translation done by getEffectiveLocation()
+		caller->reverseTransform(x_t, y_t, moveDir); //fixes the possible translation done by sendToEffectiveLocation()
 	//x_t or y_t has also already been moved by one square according to moveDir
 	//and by this point we know it's a valid move, so we're good to update the caller's location!
 
@@ -336,22 +372,93 @@ bool StudentWorld::canMoveInDirection(const GraphObject::Direction moveDir, Acto
 
 
 //overlap compares the bottom-left corner of each sprite to determine overlap (should always be a valid comparison)
-int overlap(Actor* a, Actor* b)
+int StudentWorld::overlap(Actor* a, Actor* b)
 {
-	int xa = a->getX();
-	int xb = b->getX();
-	int ya = a->getY();
-	int yb = b->getY();
+	//if the Actors are far away...
+	CoordType xa, ya, xb, yb;
 
-	//GraphObject::Direction da = a->getDirection();
+	a->putAtSpriteCorner(DEFAULT_CORNER, xa, ya);
+	b->putAtSpriteCorner(DEFAULT_CORNER, xb, yb);
+
+	double dist = distance(xa, ya, xb, yb);
+
+	if (dist > (a->getMaxLength() + b->getMaxLength()))
+		return EXISTS_GAP; //there must be a gap. Skip all the extra stuff below
 
 
+	Corner relLoc = a->relativeLocationTo(b);
 
-	if (((xa - xb) == SPRITE_WIDTH) ||
-		((ya - xb) == SPRITE_HEIGHT))
-		return TOUCHING;
-	else if (((xa - xb) < SPRITE_WIDTH) ||
-		((ya - yb) < SPRITE_HEIGHT))
+	if (relLoc == NA)
+		return OVERLAPPING; //if at the same place, definitely overlapping
+
+	//CoordType x_low, x_high, y_low, y_high;
+	CoordType x, y;
+
+	b->putAtSpriteCorner(relLoc, x, y);
+
+	if (a->isInsideMySprite(x, y))
 		return OVERLAPPING;
-	else return EXISTS_GAP;
+
+	bool atSide;
+
+	//consider boundary cases of 'touching'
+	switch (relLoc) //of a compared to b
+	{
+	case bottom_left:
+						// b is directly to the right of a		 and		b is near a vertically
+		atSide = ( ((a->getX() + a->getWidth()) == b->getX()) && ((b->getY() - a->getY()) < a->getHeight() ));
+		break;
+	case bottom_right:
+		atSide = (((a->getX() - a->getWidth()) == b->getX()) && ((b->getY() - a->getY()) < a->getHeight()));
+		break;
+	case top_left:
+		atSide = (((a->getY() + a->getHeight()) == b->getY()) && ((b->getX() - a->getX()) < a->getWidth()));
+		break;
+	case top_right:
+		atSide = (((a->getY() + a->getHeight()) == b->getY()) && ((b->getX() - a->getX()) < a->getWidth()));
+		break;
+	}
+
+	if (atSide)
+		return TOUCHING;
+
+	//if it's not overlapping or touching, there must be a gap!
+
+	return EXISTS_GAP;
+
+		/*
+		//cases below do the best they can to make (x_low, y_low) be more toward the specified corner than (x_high, y_high)
+		//	if x_this < x_other (i.e. this is "bottom"), this->putAtSpriteCorner(top____, x_low, ...)
+		//						                  else   other->putAtSpriteCorner(top____, x_low, ...)
+	case bottom_left:
+		a->putAtSpriteCorner(top_right, x_low, y_low);
+		b->putAtSpriteCorner(bottom_left, x_high, y_high);
+		break;
+	case top_left:
+		a->putAtSpriteCorner(bottom_right, x_low, y_high);
+		b->putAtSpriteCorner(top_left, x_high, y_low);
+		break;
+	case bottom_right:
+		a->putAtSpriteCorner(top_left, x_high, y_low);
+		b->putAtSpriteCorner(bottom_right, x_low, y_high);
+		break;
+	case top_right:
+		a->putAtSpriteCorner(bottom_left, x_high, y_high);
+		b->putAtSpriteCorner(top_right, x_low, y_low);
+		break;
+	}
+
+	CoordType dx = x_high - x_low;
+	CoordType dy = y_high - y_low;
+
+	// "Touching" is when (x_high - x_low) == 1
+	// will subtract 1 from dx and dy so we can base our logic around 0
+	dx--;
+	dy--;
+	
+	//if either dx or dy are less
+
+	*/
 }
+
+

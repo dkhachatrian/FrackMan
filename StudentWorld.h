@@ -80,11 +80,13 @@ public:
 
 	bool cleanUpActorsAndFrackMan();
 
-	bool removeDirt(const GraphObject::Direction dir, const int& x, const int& y);
+	bool removeDirt(const GraphObject::Direction dir, const CoordType& x, const CoordType& y);
 
 	std::vector<Actor*>* getActors() { return &(m_actors); }
 
-	bool StudentWorld::canMoveInDirection(const GraphObject::Direction moveDir, Actor* caller);
+
+	bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
+	bool StudentWorld::canMoveInDirection(DynamicObject* caller, const GraphObject::Direction moveDir);
 
 
 
@@ -95,6 +97,8 @@ public:
 
 
 	bool isInvalidLocation(int x, int y) { return (x < 0 || x >= VIEW_WIDTH || y < 0 || y >= VIEW_HEIGHT); }
+
+	int overlap(Actor* a, Actor* b);
 
 
 private:
@@ -128,7 +132,7 @@ private:
 
 double distance(int x1, int y1, int x2, int y2);
 
-int overlap(Actor* a, Actor* b);
+//int overlap(Actor* a, Actor* b);
 
 
 #endif // STUDENTWORLD_H_
