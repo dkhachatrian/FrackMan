@@ -273,12 +273,12 @@ double distance(int x1, int y1, int x2, int y2)
 bool StudentWorld::canMoveInDirection(const GraphObject::Direction moveDir, Actor* caller)
 {
 
-	int x_t = -1;
-	int y_t = -1;
+	int x_t = caller->getX();
+	int y_t = caller->getY();
 
 
 
-	caller->getEffectiveLocation(x_t, y_t, moveDir);
+	bool transformed = caller->getEffectiveLocation(x_t, y_t, moveDir);
 
 	switch (moveDir)
 	{
@@ -319,7 +319,8 @@ bool StudentWorld::canMoveInDirection(const GraphObject::Direction moveDir, Acto
 	//otherwise, we should be good to go!
 	//update (x,y) and get out
 
-	caller->reverseTransform(x_t, y_t, moveDir); //fixes the possible translation done by getEffectiveLocation()
+	if(transformed)
+		caller->reverseTransform(x_t, y_t, moveDir); //fixes the possible translation done by getEffectiveLocation()
 	//x_t or y_t has also already been moved by one square according to moveDir
 	//and by this point we know it's a valid move, so we're good to update the caller's location!
 

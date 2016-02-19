@@ -61,6 +61,7 @@ bool DynamicObject::attemptMove(const Direction dir)
 	if (a || b)
 	{
 		GraphObject::setDirection(dir);
+		moveTo(getX(), getY()); //"move" with no change in coordinates to have animation play
 		//fix the affected coordinates
 		return false; //didn't move
 	}
@@ -79,6 +80,7 @@ bool DynamicObject::attemptMove(const Direction dir)
 
 	//return false; //for now
 }
+
 
 bool DynamicObject::canMoveInDirection(const Direction moveDir, int& x, int& y)
 {
