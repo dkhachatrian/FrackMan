@@ -20,6 +20,11 @@ const int DOWN_DIR = -1;
 const int LEFT_DIR = -1;
 const int RIGHT_DIR = 1;
 
+const int TOUCHING = 0;
+const int OVERLAPPING = -1;
+const int EXISTS_GAP = 1;
+
+
 const int INVALID_IID = -1;
 const unsigned int INVALID_DEPTH =-1; //a huge number actually
 const double NORMAL_IMAGE_SIZE = 1;
@@ -61,6 +66,18 @@ public:
 	}
 
 	int getIdentity() const{ return m_identity; }
+
+
+	//Gives "effective" (x,y) based on sprite size and current direction
+	//Returns true if the input parameters x or y were changed. Otherwise returns false.
+	bool getEffectiveLocation(int& x, int& y, const Direction dir);
+
+	// Reverses the actions of getEffectiveLocation on the parameters x and y
+	void reverseTransform(int& x, int& y, const Direction dir);
+
+
+
+
 	//accessor functions for GraphObject (should never change!)
 	//maybe move these to protected?
 	/*
@@ -107,38 +124,6 @@ public:
 protected:
 	void setIdentityAs(int id) {m_identity = id;}
 
-	//Gives "effective" (x,y) based on sprite size and current direction
-	//Returns true if the input parameters x or y were changed. Otherwise returns false.
-	bool getEffectiveLocation(int& x, int& y, const Direction dir)
-	{
-		switch (dir)
-		{
-		case up:
-			y += (SPRITE_HEIGHT - 1); //looking for overlap of sprites so need to fix the offset between "location" and sprite
-										// (SPRITE_DIMENSION - 1) puts the coordinate on the other edge of the sprite
-			return true;
-		case right:
-			x += (SPRITE_WIDTH - 1);
-			return true;
-		case left:
-		case down:
-			return false;
-		}
-	}
-
-	void reverseTransform(int& x, int& y, const Direction dir)
-	{
-		switch (dir)
-		{
-		case up:
-			y -= (SPRITE_HEIGHT - 1); //looking for overlap of sprites so need to fix the offset between "location" and sprite
-									  // (SPRITE_DIMENSION - 1) puts the coordinate on the other edge of the sprite
-			return;
-		case right:
-			x -= (SPRITE_WIDTH - 1);
-			return;
-		}
-	}
 
 	/*
 	virtual bool setDir(int dir)
@@ -172,10 +157,7 @@ protected:
 
 
 	//helper functions
-	bool isInvalidLocation(int x, int y)
-	{
-		return (x < 0 || x >= VIEW_WIDTH || y < 0 || y >= VIEW_HEIGHT);
-	}
+
 
 	void setSolidityAs(bool state)
 	{
@@ -249,12 +231,9 @@ public:
 	virtual bool canMoveInDirection(const Direction dir, int& x, int& y);
 
 
+	// Does not change anything
+	virtual bool moveMatchesDir(const Direction moveDir) const { return (GraphObject::getDirection() == moveDir); }
 
-	virtual bool moveMatchesDir(const Direction moveDir)
-	{
-		bool result = getDirection() == moveDir;
-		return (GraphObject::getDirection() == moveDir);
-	}
 };
 
 /*

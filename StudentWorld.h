@@ -27,8 +27,8 @@ const int SPRITE_WIDTH_R = SPRITE_WIDTH / 2;
 class StudentWorld : public GameWorld
 {
 public:
+	//construct/destruct
 	StudentWorld(std::string assetDir);
-
 	virtual ~StudentWorld();
 
 	bool hasPlayerWon() const;
@@ -73,21 +73,19 @@ public:
 	*/
 
 
-
+	//the bread and butter
 	virtual int init();
-
 	virtual int move();
-
 	virtual void cleanUp();
 
 	bool cleanUpActorsAndFrackMan();
 
 	bool removeDirt(const GraphObject::Direction dir, const int& x, const int& y);
 
-	std::vector<Actor*>* getActors()
-	{
-		return &(m_actors);
-	}
+	std::vector<Actor*>* getActors() { return &(m_actors); }
+
+	bool StudentWorld::canMoveInDirection(const GraphObject::Direction moveDir, Actor* caller);
+
 
 
 	Dirt*** getDirts() { return m_dirts; }
@@ -96,7 +94,14 @@ public:
 	bool isThereDirtAt(int x, int y) { return (m_dirts[x][y] != nullptr); }
 
 
+	bool isInvalidLocation(int x, int y) { return (x < 0 || x >= VIEW_WIDTH || y < 0 || y >= VIEW_HEIGHT); }
+
+
 private:
+
+
+
+
 	void setUpDirt();
 	void cleanUpDirt();
 	void initDirt();
@@ -123,7 +128,7 @@ private:
 
 double distance(int x1, int y1, int x2, int y2);
 
-
+int overlap(Actor* a, Actor* b);
 
 
 #endif // STUDENTWORLD_H_

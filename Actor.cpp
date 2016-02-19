@@ -1,12 +1,47 @@
 #include "Actor.h"
 #include "StudentWorld.h"
 
-const int TOUCHING = 0;
-const int OVERLAPPING = -1;
-const int EXISTS_GAP = 1;
+
+// Actor functions
+
+//Gives "effective" (x,y) based on sprite size and current direction
+//Returns true if the input parameters x or y were changed. Otherwise returns false.
+bool Actor::getEffectiveLocation(int& x, int& y, const Direction dir)
+{
+	switch (dir)
+	{
+	case up:
+		y += (SPRITE_HEIGHT - 1); //looking for overlap of sprites so need to fix the offset between "location" and sprite
+								  // (SPRITE_DIMENSION - 1) puts the coordinate on the other edge of the sprite
+		return true;
+	case right:
+		x += (SPRITE_WIDTH - 1);
+		return true;
+	case left:
+	case down:
+		return false;
+	}
+}
+
+
+// Reverses the actions of getEffectiveLocation on the parameters x and y
+void Actor::reverseTransform(int& x, int& y, const Direction dir)
+{
+	switch (dir)
+	{
+	case up:
+		y -= (SPRITE_HEIGHT - 1); //looking for overlap of sprites so need to fix the offset between "location" and sprite
+								  // (SPRITE_DIMENSION - 1) puts the coordinate on the other edge of the sprite
+		return;
+	case right:
+		x -= (SPRITE_WIDTH - 1);
+		return;
+	}
+}
 
 
 // DynamicObject functions
+
 
 bool DynamicObject::attemptMove(const Direction dir)
 {
@@ -43,6 +78,56 @@ bool DynamicObject::attemptMove(const Direction dir)
 
 
 	//return false; //for now
+}
+
+bool DynamicObject::canMoveInDirection(const Direction moveDir, int& x, int& y)
+{
+
+	int x_t = x;
+	int y_t = y;
+
+	switch (moveDir)
+	{
+	case up:
+		//x = getX();
+		y_t = y + UP_DIR;
+		break;
+	case down:
+		//x = getX();
+		y_t = y + DOWN_DIR;
+		break;
+	case left:
+		x_t = x + LEFT_DIR;
+		//y = getY();
+		break;
+	case right:
+		x_t = x + RIGHT_DIR;
+		//y = getY();
+		break;
+	}
+
+	if (getWorld()->isInvalidLocation(x_t, y_t)) //if trying to go outside possible gridspace, bad
+		return false;
+
+	std::vector<Actor*>::iterator it = getWorld()->getActors()->begin();
+
+	//check over all Actors
+	while (it != getWorld()->getActors()->end())
+	{
+		if (overlap(this, (*it)) == TOUCHING) //see if there's one where the Actor is trying to go
+		{
+			if ((*it)->isSolid()) //if the thing there is solid (i.e. Boulder), bad
+				return false;
+		}
+		it++;
+	}
+
+	//otherwise, we should be good to go!
+	//update (x,y) and get out
+	x = x_t;
+	y = y_t;
+
+	return true;
 }
 
 
@@ -84,6 +169,7 @@ bool FrackMan::attemptMove(const Direction dir)
 	bool result = DynamicObject::attemptMove(dir);
 	doSpecializedAction();
 
+
 	if (!result)
 		return false;
 
@@ -91,7 +177,8 @@ bool FrackMan::attemptMove(const Direction dir)
 
 }
 
-
+//FrackMan's specialized action are many, depending on what key is pressed.
+//	but at the moment, only thing implemented is for movement (i.e. removing dirt in front of it)
 bool FrackMan::doSpecializedAction()
 {
 	int x_n = getX();
@@ -110,6 +197,8 @@ bool FrackMan::doSpecializedAction()
 	return removedDirt;
 }
 
+
+/*
 //x and y start at the topmost or leftmost square of dirt to be removed depending on the direction of movement:
 // "up or down" --> x is leftmost
 // "left or right" --> y is topmost
@@ -158,58 +247,8 @@ bool FrackMan::removeDirt(const Direction dir, const int& x, const int& y)
 	return result;
 
 }
+*/
 
-
-
-bool DynamicObject::canMoveInDirection(const Direction moveDir, int& x, int& y)
-{
-
-	int x_t = x;
-	int y_t = y;
-
-	switch (moveDir)
-	{
-	case up:
-		//x = getX();
-		y_t = y + UP_DIR;
-		break;
-	case down:
-		//x = getX();
-		y_t = y + DOWN_DIR;
-		break;
-	case left:
-		x_t = x + LEFT_DIR;
-		//y = getY();
-		break;
-	case right:
-		x_t = x + RIGHT_DIR;
-		//y = getY();
-		break;
-	}
-
-	if (isInvalidLocation(x_t, y_t)) //if trying to go outside possible gridspace, bad
-		return false;
-	
-	std::vector<Actor*>::iterator it = getWorld()->getActors()->begin();
-
-	//check over all Actors
-	while (it != getWorld()->getActors()->end())
-	{
-		if (overlap(this, (*it)) == TOUCHING) //see if there's one where the Actor is trying to go
-		{
-			if ((*it)->isSolid()) //if the thing there is solid (i.e. Boulder), bad
-				return false;
-		}
-		it++;
-	}
-
-	//otherwise, we should be good to go!
-	//update (x,y) and get out
-	x = x_t;
-	y = y_t;
-
-	return true;
-}
 
 
 // Students:  Add code to this file (if you wish), Actor.h, StudentWorld.h, and StudentWorld.cpp
@@ -219,23 +258,3 @@ bool DynamicObject::canMoveInDirection(const Direction moveDir, int& x, int& y)
 
 // Helper functions
 
-//a is always a dynamicObject 
-int overlap(Actor* a, Actor* b)
-{
-	int xa = a->getX();
-	int xb = b->getX();
-	int ya = a->getY();
-	int yb = b->getY();
-
-	//GraphObject::Direction da = a->getDirection();
-
-
-
-	if (((xa - xb) == SPRITE_WIDTH) ||
-		((ya - xb) == SPRITE_HEIGHT))
-		return TOUCHING;
-	else if (((xa - xb) < SPRITE_WIDTH) ||
-		((ya - yb) < SPRITE_HEIGHT))
-		return OVERLAPPING;
-	else return EXISTS_GAP;
-}

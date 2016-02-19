@@ -108,6 +108,9 @@ bool StudentWorld::hasPlayerWon() const
 }
 
 
+//x and y start at the topmost or leftmost square of dirt to be removed depending on the direction of movement:
+// "up or down" --> x is leftmost
+// "left or right" --> y is topmost
 bool StudentWorld::removeDirt(const GraphObject::Direction dir, const int& x, const int& y)
 {
 	bool result = false;
@@ -265,7 +268,89 @@ double distance(int x1, int y1, int x2, int y2)
 }
 
 
+//PRECONDITON:
+
+bool StudentWorld::canMoveInDirection(const GraphObject::Direction moveDir, Actor* caller)
+{
+
+	int x_t = -1;
+	int y_t = -1;
+
+
+
+	caller->getEffectiveLocation(x_t, y_t, moveDir);
+
+	switch (moveDir)
+	{
+	case GraphObject::up:
+		//x = getX();
+		y_t += UP_DIR;
+		break;
+	case GraphObject::down:
+		//x = getX();
+		y_t += DOWN_DIR;
+		break;
+	case GraphObject::left:
+		x_t += LEFT_DIR;
+		//y = getY();
+		break;
+	case GraphObject::right:
+		x_t += RIGHT_DIR;
+		//y = getY();
+		break;
+	}
+
+	if (isInvalidLocation(x_t, y_t)) //if trying to go outside possible gridspace, bad
+		return false;
+
+	std::vector<Actor*>::iterator it = m_actors.begin();
+
+	//check over all Actors
+	while (it != m_actors.end())
+	{
+		if (overlap(caller, (*it)) == TOUCHING) //see if there's one where the Actor is trying to go
+		{
+			if ((*it)->isSolid()) //if the thing there is solid (i.e. Boulder), bad
+				return false;
+		}
+		it++;
+	}
+
+	//otherwise, we should be good to go!
+	//update (x,y) and get out
+
+	caller->reverseTransform(x_t, y_t, moveDir); //fixes the possible translation done by getEffectiveLocation()
+	//x_t or y_t has also already been moved by one square according to moveDir
+	//and by this point we know it's a valid move, so we're good to update the caller's location!
+
+	caller->moveTo(x_t, y_t);
+
+	return true;
+}
 
 
 // Students:  Add code to this file (if you wish), StudentWorld.h, Actor.h and Actor.cpp
 
+//a is always a dynamicObject 
+
+
+//overlap compares the bottom-left corner of each sprite to determine overlap (should always be a valid comparison)
+int overlap(Actor* a, Actor* b)
+{
+	int xa = a->getX();
+	int xb = b->getX();
+	int ya = a->getY();
+	int yb = b->getY();
+
+	//GraphObject::Direction da = a->getDirection();
+
+
+
+	if (((xa - xb) == SPRITE_WIDTH) ||
+		((ya - xb) == SPRITE_HEIGHT))
+		return TOUCHING;
+	else if (((xa - xb) < SPRITE_WIDTH) ||
+		((ya - yb) < SPRITE_HEIGHT))
+		return OVERLAPPING;
+	else return EXISTS_GAP;
+}
