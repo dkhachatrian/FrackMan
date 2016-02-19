@@ -1,0 +1,6 @@
+﻿  StudentWorld.cpp
+c:\vs2015\frackman\frackman\studentworld.cpp(209): warning C4018: '<': signed/unsigned mismatch
+  Actor.cpp
+  Generating Code...
+c:\vs2015\frackman\frackman\actor.h(133): warning C4715: 'Actor::getEffectiveLocation': not all control paths return a value
+  FrackMan.vcxproj -> C:\VS2015\FrackMan\Debug\FrackMan.exe
