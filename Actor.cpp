@@ -17,8 +17,7 @@ bool Actor::getEffectiveLocation(int& x, int& y, const Direction dir)
 	case right:
 		x += (SPRITE_WIDTH - 1);
 		return true;
-	case left:
-	case down:
+	default:
 		return false;
 	}
 }
@@ -172,10 +171,7 @@ bool FrackMan::attemptMove(const Direction dir)
 	doSpecializedAction();
 
 
-	if (!result)
-		return false;
-
-
+	return result;
 
 }
 

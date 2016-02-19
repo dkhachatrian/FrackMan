@@ -1,4 +1,2 @@
 ﻿  Actor.cpp
-c:\vs2015\frackman\frackman\actor.cpp(24): warning C4715: 'Actor::getEffectiveLocation': not all control paths return a value
-c:\vs2015\frackman\frackman\actor.cpp(180): warning C4715: 'FrackMan::attemptMove': not all control paths return a value
   FrackMan.vcxproj -> C:\VS2015\FrackMan\Debug\FrackMan.exe
