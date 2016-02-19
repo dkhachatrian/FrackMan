@@ -6,6 +6,48 @@ const int OVERLAPPING = -1;
 const int EXISTS_GAP = 1;
 
 
+// DynamicObject functions
+
+bool DynamicObject::attemptMove(const Direction dir)
+{
+	int x_n = getX();
+	int y_n = getY();
+
+
+	//make "effective" x,y coordinates due to sprites
+	//(i.e., shift y up SPRITE_HEIGHT squares if trying to go up
+	//			or x right SPRITE_WIDTH squares if trying to go right)
+
+	bool transformed = getEffectiveLocation(x_n, y_n, dir);
+
+	bool a = !moveMatchesDir(dir);
+	bool b = !canMoveInDirection(dir, x_n, y_n);
+
+	if (a || b)
+	{
+		GraphObject::setDirection(dir);
+		//fix the affected coordinates
+		return false; //didn't move
+	}
+	//otherwise
+
+
+	//fix the affected coordinates if necessary
+	if (transformed)
+		reverseTransform(x_n, y_n, dir);
+
+	//alright
+	moveTo(x_n, y_n);
+	return true;
+
+
+
+	//return false; //for now
+}
+
+
+// FrackMan functions
+
 int FrackMan::doSomething()
 {
 	int input = 0;
@@ -37,78 +79,35 @@ int FrackMan::doSomething()
 	return 0; //change later
 }
 
-
-
-/*
-//reads keyboard input (for FrackMan only!)
-//calls Actor::setDirection with appropriate parameter
-// Returns true if direction was changed, false if not
-bool DynamicObject::setDir(Direction dir)
-{
-
-	switch (dir)
-	{
-	case KEY_PRESS_LEFT:
-		Actor::setDirection(left);
-		break;
-	case KEY_PRESS_DOWN:
-		Actor::setDirection(down);
-		break;
-	case KEY_PRESS_RIGHT:
-		Actor::setDirection(right);
-		break;
-	case KEY_PRESS_UP:
-		Actor::setDirection(up);
-		break;
-	default: //shouldn't change
-		return false;
-	}
-	
-	return true;
-}
-*/
-
 bool FrackMan::attemptMove(const Direction dir)
+{
+	bool result = DynamicObject::attemptMove(dir);
+	doSpecializedAction();
+
+	if (!result)
+		return false;
+
+
+
+}
+
+
+bool FrackMan::doSpecializedAction()
 {
 	int x_n = getX();
 	int y_n = getY();
+	Direction dir = getDirection();
 
-	
-	//make "effective" x,y coordinates due to sprites
-	//(i.e., shift y up SPRITE_HEIGHT squares if trying to go up
-	//			or x right SPRITE_WIDTH squares if trying to go right)
+	getEffectiveLocation(x_n, y_n, dir);
 
-	bool transformed = getEffectiveLocation(x_n, y_n, dir);
+	bool removedDirt = getWorld()->removeDirt(dir, x_n, y_n);
 
-	bool a = !moveMatchesDir(dir);
-	bool b = !canMoveInDirection(dir, x_n, y_n);
-
-	if (a || b)
-	{
-		GraphObject::setDirection(dir);
-		//fix the affected coordinates
-		return false; //didn't move
-	}
-	//otherwise
-	bool removedDirt = removeDirt(dir, x_n, y_n); //if FrackMan removes any Dirt, he will not move that tick
-	
 	if (removedDirt) //means dirt was removed
 	{
 		getWorld()->playSound(SOUND_DIG);
 		//return false;
 	}
-	
-	//fix the affected coordinates if necessary
-	if (transformed)
-		reverseTransform(x_n, y_n, dir);
-
-	//alright
-	moveTo(x_n, y_n);
-	return true;
-	
-
-
-	//return false; //for now
+	return removedDirt;
 }
 
 //x and y start at the topmost or leftmost square of dirt to be removed depending on the direction of movement:

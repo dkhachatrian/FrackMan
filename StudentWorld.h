@@ -11,9 +11,13 @@
 #include <vector>
 #include "Actor.h"
 
+//#include "GraphObject.h"
+
+
 class Actor;
 class Dirt;
 class FrackMan;
+//enum Direction;
 
 const int SPRITE_HEIGHT_R = SPRITE_HEIGHT / 2; //the "radius" of the y-coordinate of box
 											   //to use the center of sprite for location
@@ -25,15 +29,13 @@ class StudentWorld : public GameWorld
 public:
 	StudentWorld(std::string assetDir);
 
-	virtual ~StudentWorld()
-	{
-		cleanUpDirt();
-		cleanUpActorsAndFrackMan();
-	}
+	virtual ~StudentWorld();
 
 	bool hasPlayerWon() const;
 
+	
 	//to be completed after Part 1
+	/*
 	void StudentWorld::setDisplayText()
 	{
 		int score = GameWorld::getScore();
@@ -43,7 +45,7 @@ public:
 		int squirts = m_player->getSquirts();
 		int gold = m_player->getGold();
 		int sonar = m_player->getSonar();
-		/*
+		
 		int barrelsLeft = getNumberOfBarrelsRemainingToBePickedUp();
 		// Next, create a string from your statistics, of the form:
 		// “Scr: 0321000 Lvl: 52 Lives: 3 Hlth: 80% Water: 20 Gld: 3 Sonar: 1 Oil Left: 2”
@@ -52,9 +54,9 @@ public:
 		// Finally, update the display text at the top of the screen with your
 		// newly created stats
 		setGameStatText(s); // calls our provided GameWorld::setGameStatText
-		*/
+		
 	}
-
+	*/
 
 	/*
 	std::string createGameStatText() const
@@ -80,22 +82,18 @@ public:
 
 	bool cleanUpActorsAndFrackMan();
 
+	bool removeDirt(const GraphObject::Direction dir, const int& x, const int& y);
+
 	std::vector<Actor*>* getActors()
 	{
 		return &(m_actors);
 	}
 
 
-	Dirt*** getDirts()
-	{
-		return m_dirts;
-	}
+	Dirt*** getDirts() { return m_dirts; }
 
 
-	bool isThereDirtAt(int x, int y)
-	{
-		return (m_dirts[x][y] != nullptr);
-	}
+	bool isThereDirtAt(int x, int y) { return (m_dirts[x][y] != nullptr); }
 
 
 private:

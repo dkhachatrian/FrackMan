@@ -5,15 +5,33 @@ using namespace std;
 #include "Actor.h"
 #include "GameWorld.h"
 
+#include "GraphObject.h" //so it knows what Direction's are
+
 GameWorld* createStudentWorld(string assetDir)
 {
 	return new StudentWorld(assetDir);
 }
 
 
+
+
+StudentWorld::StudentWorld(std::string assetDir)
+	: GameWorld(assetDir)
+{
+	std::vector<Actor*> m_actors;
+	m_player = new FrackMan(this);
+	m_dirts = nullptr;
+
+	initDirt();
+
+}
+
+
+
 int StudentWorld::init()
 {
 	setUpDirt();
+	m_player->moveTo(PLAYER_START_X, PLAYER_START_Y); //just in case ...
 	return 0; //change later
 }
 
@@ -72,47 +90,17 @@ int StudentWorld::move()
 
 void StudentWorld::cleanUp()
 {
-
+	cleanUpDirt();
+	cleanUpActorsAndFrackMan();
 }
 
-
-StudentWorld::StudentWorld(std::string assetDir)
-	: GameWorld(assetDir)
+StudentWorld::~StudentWorld()
 {
-	std::vector<Actor*> m_actors;
-	m_player = new FrackMan(this);
-	m_dirts = nullptr;
-
-	initDirt(); //init's m_dirts
-
-				//start with empty vector
-				//std::vector<std::vector<Dirt*> > m_dirts;
-
-				/*
-				for (int i = 0; i < VIEW_WIDTH; i++)
-				{
-				std::vector<Dirt*>* vp = new std::vector<Dirt*>;
-
-				for (int j = 0; j < VIEW_HEIGHT; j++)
-				{
-				vp->push_back(nullptr);
-				}
-				m_dirts.push_back(vp);
-				}
-				*/
-
-				/*
-				//create the array for m_dirts
-				for (int i = 0; i < VIEW_WIDTH; i++)
-				{
-				m_dirts[i] = new Dirt*[VIEW_HEIGHT];
-				}
-				//make all the pointers inside the dirts point to nullptr
-				*/
-				//build up the 64x64 "array" of Dirt objects
-				//initDirt();
-
+	cleanUpDirt();
+	cleanUpActorsAndFrackMan();
 }
+
+
 
 bool StudentWorld::hasPlayerWon() const
 {
@@ -120,6 +108,51 @@ bool StudentWorld::hasPlayerWon() const
 }
 
 
+bool StudentWorld::removeDirt(const GraphObject::Direction dir, const int& x, const int& y)
+{
+	bool result = false;
+
+	int x_eff = x;
+	int y_eff = y;
+
+	//currently glitching at some points...
+
+	switch (dir)
+	{
+	case GraphObject::up:
+		//int x_eff = x + SPRITE_WIDTH; //the coordinates are mapped to bottom-left corner of sprite
+	case GraphObject::down:
+		for (int i = 0; i < SPRITE_WIDTH; i++) //make room for sprite's width
+		{
+			Dirt* p = m_dirts[x_eff + i][y_eff];
+			if (p != nullptr) //if there's Dirt in the way
+			{
+				result = true; //report that to FrackMan call
+				delete p; //delete old Object
+				m_dirts[x_eff + i][y_eff] = nullptr; //show that it's empty (CANNOT USE P ANYMORE)
+			}
+		}
+		break;
+	case GraphObject::left:
+		//int y_eff = y + SPRITE_HEIGHT; //the coordinates are mapped to bottom-left corner of sprite
+	case GraphObject::right:
+		for (int j = 0; j < SPRITE_HEIGHT; j++) //make room for sprite's height
+		{
+			//Dirt*** d = getWorld()->getDirts();
+			Dirt* p = m_dirts[x_eff][y_eff + j];
+			if (p != nullptr) //if there's Dirt in the way
+			{
+				result = true; //report that to FrackMan call
+				delete p; //delete old Object
+				m_dirts[x_eff][y_eff + j] = nullptr; //show that it's empty (CANNOT USE P ANYMORE)
+			}
+		}
+		break;
+	}
+
+	return result;
+
+}
 
 
 

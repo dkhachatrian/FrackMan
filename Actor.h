@@ -60,10 +60,7 @@ public:
 		return m_is_solid;
 	}
 
-	int getIdentity() const
-	{
-		return m_identity;
-	}
+	int getIdentity() const{ return m_identity; }
 	//accessor functions for GraphObject (should never change!)
 	//maybe move these to protected?
 	/*
@@ -108,10 +105,7 @@ public:
 	}
 	*/
 protected:
-	void setIdentityAs(int id)
-	{
-		m_identity = id;
-	}
+	void setIdentityAs(int id) {m_identity = id;}
 
 	//Gives "effective" (x,y) based on sprite size and current direction
 	//Returns true if the input parameters x or y were changed. Otherwise returns false.
@@ -236,13 +230,17 @@ public:
 	virtual ~DynamicObject()
 	{};
 
-	virtual bool attemptMove(const Direction dir) = 0;
+	virtual bool attemptMove(const Direction dir);
+	virtual bool doSpecializedAction() { return false; }
 	
 	//bool setDir(Direction dir) {}; //covered by GraphObject::setDirection(Direction d);
 
 	//whether the movable object is annoyed
 	virtual bool isAnnoyed() = 0;
 	virtual int attemptAnnoyedAction() = 0;
+
+
+
 
 
 	//changes x_s,y_s (copies of the coordinates of Actor who called it)
@@ -310,6 +308,7 @@ public:
 	void changeSonarBy(int x) { m_sonar += x; }
 
 
+	virtual bool doSpecializedAction();
 	bool removeDirt(const Direction dir, const int& x, const int& y);
 
 protected:
