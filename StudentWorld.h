@@ -33,32 +33,9 @@ public:
 
 	bool hasPlayerWon() const { return (m_barrels == 0); }
 
-	//bool canItMoveInDirection(const DynamicObject* a, const GraphObject::Direction dir) const;
-	
-	//to be completed after Part 1
-	/*
-	void StudentWorld::setDisplayText()
-	{
-		int score = GameWorld::getScore();
-		int level = GameWorld::getLevel();
-		int lives = GameWorld::getLives();
-		int health = m_player->getHealth();
-		int squirts = m_player->getSquirts();
-		int gold = m_player->getGold();
-		int sonar = m_player->getSonar();
-		
-		int barrelsLeft = getNumberOfBarrelsRemainingToBePickedUp();
-		// Next, create a string from your statistics, of the form:
-		// “Scr: 0321000 Lvl: 52 Lives: 3 Hlth: 80% Water: 20 Gld: 3 Sonar: 1 Oil Left: 2”
-		std::string s = someFunctionYouUseToFormatThingsNicely(score, level, lives,
-			health, squirts, gold, sonar, barrelsLeft);
-		// Finally, update the display text at the top of the screen with your
-		// newly created stats
-		setGameStatText(s); // calls our provided GameWorld::setGameStatText
-		
-	}
-	*/
-
+	void StudentWorld::setDisplayText();
+	std::string formatDisplayText(int score, int level, int lives,
+		int health, int squirts, int gold, int sonar, int barrelsLeft) const;
 	/*
 	std::string createGameStatText() const
 	{
@@ -104,7 +81,7 @@ public:
 
 private:
 
-
+	//std::string prependCharToStringToSize(std::string s, char c, int size);
 
 
 	void setUpDirt();
@@ -113,8 +90,10 @@ private:
 
 
 	//keep track of how many of these items are left in the level
-	int m_barrels;
-	int m_gold;
+	int m_barrelsLeft;
+	int m_goldLeft;
+	int m_bouldersLeft;
+	//int m_squirts;
 
 	//int nums[2]; // nums is a ints*
 	std::vector<Actor*> m_actors;

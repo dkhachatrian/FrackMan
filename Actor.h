@@ -77,7 +77,7 @@ public:
 
 	StudentWorld* getWorld() const { return m_sw; }
 	bool isSolid() const{ return m_is_solid; }
-	int getIdentity() const{ return m_identity; }
+	int getIdentity() const{ return m_id; }
 	double getWidth() const { return m_width; }
 	double getHeight() const { return m_height; }
 
@@ -96,66 +96,21 @@ public:
 	bool isInsideMySprite(const CoordType& x, const CoordType& y) const;
 
 	Corner relativeLocationTo(const Actor* other) const;
-	//accessor functions for GraphObject (should never change!)
-	//maybe move these to protected?
-	/*
-	int getX() const
-	{
-		return m_go.getX();
-	}
-	int getY() const
-	{
-		return m_go.getY();
-	}
-	int getDir() const
-	{
-		return m_go.getDirection();
-	}
-	double getBrightness() const
-	{
-		return m_go.getBrightness();
-	}
-	int getSize() const
-	{
-		return m_go.getSize();
-	}
-	int getID() const
-	{
-		return m_go.getID();
-	}
-	*/
 
-	/*
-	virtual bool changeXBy(int x)
-	{
-		if (abs(x) > 1)
-			exit(2); //only moving one subpixel at a time!
-		m_x += x;
-	}
-	virtual bool changeYBy(int y)
-	{
-		if (abs(y) > 1)
-			exit(2); //only moving one subpixel at a time!
-		m_y += y;
-	}
-	*/
 protected:
-	void setIdentityAs(int id) {m_identity = id;}
+	void setIdentityAs(int id) {m_id = id;}
 
 
 
 	//helper functions
 
 
-	void setSolidityAs(bool state)
-	{
-		m_is_solid = state;
-	}
+	void setSolidityAs(bool state) { m_is_solid = state; }
 
 private:
 	StudentWorld* m_sw;
 	bool m_is_solid;
-	int m_identity;
+	int m_id;
 	CoordType m_width;
 	CoordType m_height;
 	//GraphObject m_go;

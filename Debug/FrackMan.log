@@ -1,6 +1,23 @@
 ﻿  StudentWorld.cpp
 c:\vs2015\frackman\frackman\actor.h(60): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
 c:\vs2015\frackman\frackman\actor.h(61): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
-c:\vs2015\frackman\frackman\studentworld.cpp(133): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(373): warning C4018: '<': signed/unsigned mismatch
-  FrackMan.vcxproj -> C:\VS2015\FrackMan\Debug\FrackMan.exe
+c:\vs2015\frackman\frackman\studentworld.h(34): error C2065: 'm_barrels': undeclared identifier
+c:\vs2015\frackman\frackman\studentworld.cpp(141): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(300): error C2065: 'm_barrels': undeclared identifier
+c:\vs2015\frackman\frackman\studentworld.cpp(323): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+c:\vs2015\frackman\frackman\studentworld.cpp(336): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(392): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(525): warning C4018: '<': signed/unsigned mismatch
+  Generating Code...
+  Compiling...
+  Actor.cpp
+c:\vs2015\frackman\frackman\actor.h(60): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
+c:\vs2015\frackman\frackman\actor.h(61): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
+c:\vs2015\frackman\frackman\studentworld.h(34): error C2065: 'm_barrels': undeclared identifier
+c:\vs2015\frackman\frackman\actor.cpp(39): warning C4244: '-=': conversion from 'double' to 'CoordType', possible loss of data
+c:\vs2015\frackman\frackman\actor.cpp(43): warning C4244: '-=': conversion from 'double' to 'CoordType', possible loss of data
+c:\vs2015\frackman\frackman\actor.cpp(62): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
+c:\vs2015\frackman\frackman\actor.cpp(65): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
+c:\vs2015\frackman\frackman\actor.cpp(68): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
+c:\vs2015\frackman\frackman\actor.cpp(69): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
+  Generating Code...

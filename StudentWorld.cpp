@@ -7,6 +7,13 @@ using namespace std;
 
 #include "GraphObject.h" //so it knows what Direction's are
 
+//helper functions
+int min(int x, int y);
+int max(int x, int y);
+double distance(int x1, int y1, int x2, int y2);
+std::string prependCharToStringToSize(std::string s, char c, int size);
+
+
 GameWorld* createStudentWorld(string assetDir)
 {
 	return new StudentWorld(assetDir);
@@ -52,6 +59,9 @@ StudentWorld::StudentWorld(std::string assetDir)
 	std::vector<Actor*> m_actors;
 	m_player = new FrackMan(this);
 	m_dirts = nullptr;
+	m_barrelsLeft = -1;
+	m_goldLeft = -1;
+	m_bouldersLeft = -1;
 
 	initDirt();
 
@@ -61,12 +71,17 @@ int StudentWorld::init()
 {
 	setUpDirt();
 	m_player->moveTo(PLAYER_START_X, PLAYER_START_Y); //just in case ...
+
+	m_barrelsLeft = min(getLevel() / 2 + 2, 6);
+	m_goldLeft = max(5 - getLevel() / 2, 2);
+	m_barrelsLeft = min(2 + getLevel(), 20);
+
 	return 0; //change later
 }
 
 int StudentWorld::move()
 {
-
+	setDisplayText();
 	m_player->doSomething();
 	return GWSTATUS_CONTINUE_GAME;
 
@@ -279,53 +294,66 @@ bool StudentWorld::removeDirt(const GraphObject::Direction dir, const CoordType&
 
 
 
-
-
-
-// Helper functions
-
-double distance(int x1, int y1, int x2, int y2)
+void StudentWorld::setDisplayText()
 {
-	return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
+int score = GameWorld::getScore();
+int level = GameWorld::getLevel();
+int lives = GameWorld::getLives();
+int health = m_player->getHealth();
+int squirts = m_player->getSquirts();
+int gold = m_player->getGold();
+int sonar = m_player->getSonar();
+
+int barrelsLeft = m_barrelsLeft;
+// Next, create a string from your statistics, of the form:
+// “Scr: 0321000 Lvl: 52 Lives: 3 Hlth: 80% Water: 20 Gld: 3 Sonar: 1 Oil Left: 2”
+std::string s = formatDisplayText(score, level, lives,
+health, squirts, gold, sonar, barrelsLeft);
+// Finally, update the display text at the top of the screen with your
+// newly created stats
+setGameStatText(s); // calls our provided GameWorld::setGameStatText
+
 }
 
-
-/*
-bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir)
+// of course, right AFTER I finish with the display text,
+//the writeup on ostringstream objects is posted...
+std::string StudentWorld::formatDisplayText(int score, int level, int lives,
+	int health, int squirts, int gold, int sonar, int barrelsLeft) const
 {
-	int x_n = caller->getX();
-	int y_n = caller->getY();
+	//d = 'display'
+	std::string spacing = "  ";
+	std::string d_score, d_level, d_lives, d_health, d_squirts, d_gold, d_sonar, d_barrelsLeft = "";
 
 
-	//make "effective" x,y coordinates due to sprites
-	//(i.e., shift y up SPRITE_HEIGHT squares if trying to go up
-	//			or x right SPRITE_WIDTH squares if trying to go right)
+	d_score = "Scr: " + prependCharToStringToSize(to_string(score), '0', 6);
+	d_level = "Lvl: " + prependCharToStringToSize(to_string(level), ' ', 2);
+	d_lives = "Lives: " + prependCharToStringToSize(to_string(lives), ' ', 1);
 
-	bool transformed = caller->sendEffectiveLocation(x_n, y_n, dir);
+	int hp = health / PLAYER_START_HEALTH * 100.00; //start health is max health
+	//should convert double on right to (truncated) int on left.
+	d_health = "Hlth: " + prependCharToStringToSize(to_string(hp), ' ', 3) + '%';
 
-	bool a = !caller->moveMatchesDir(dir);
-	bool b = !canMoveInDirection(caller, dir);
+	d_squirts = "Wtr: " + prependCharToStringToSize(to_string(squirts), ' ', 2);
+	d_gold = "Gld: " + prependCharToStringToSize(to_string(gold), ' ', 2);
+	d_sonar = "Sonar: " + prependCharToStringToSize(to_string(sonar), ' ', 2);
+	d_barrelsLeft = "Oil Left: " + prependCharToStringToSize(to_string(barrelsLeft), ' ', 2);
 
-	if (a || b)
+	vector<std::string> v = { d_score, d_level, d_lives, d_health, d_squirts, d_gold, d_sonar, d_barrelsLeft };
+
+	std::string result = "";
+
+	for (int i = 0; i < v.size(); i++)
 	{
-		caller->setDirection(dir);
-		caller->moveTo(caller->getX(), caller->getY()); //"move" with no change in coordinates to have animation play
-		return false; //didn't move
+		result += v[i];
+		if (i == v.size() - 1)
+			break;
+		//else add spacing
+		result += spacing;
 	}
-	//otherwise
 
 
-	//fix the affected coordinates if necessary
-	if (transformed)
-		caller->reverseTransform(x_n, y_n, dir);
-
-	//alright
-	caller->moveTo(x_n, y_n);
-	return true;
-
+	return result;
 }
-*/
-
 
 //PRECONDITON: caller has already checked that it's attempted to move in the same direction as it's facing
 //POSTCONDITON: Moves the caller in the appropriate direction if possible, returning true. Else, returns false.
@@ -491,3 +519,37 @@ int StudentWorld::overlap(const Actor* a, const Actor* b) const
 }
 
 
+
+
+
+// Helper functions
+
+double distance(int x1, int y1, int x2, int y2)
+{
+	return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
+}
+
+std::string prependCharToStringToSize(std::string s, char c, int size)
+{
+	while (s.size() < size)
+		s = c + s;
+
+	if (s.size() != size) //truncate to take last 'size' chars
+		s = s.substr(s.size() - size); //still miss Python...
+
+	return s;
+}
+
+
+int min(int x, int y)
+{
+	if (x < y)
+		return x;
+	else return y;
+}
+int max(int x, int y)
+{
+	if (x > y)
+		return x;
+	else return y;
+}
