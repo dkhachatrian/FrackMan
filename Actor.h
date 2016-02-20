@@ -37,22 +37,37 @@ const int EXISTS_GAP = 1;
 
 
 const int INVALID_IID = -1;
-const unsigned int INVALID_DEPTH =-1; //a huge number actually
+
+
 const double NORMAL_IMAGE_SIZE = 1;
 const double DIRT_IMAGE_SIZE = 0.25;
-const int DIRT_DEPTH = 3;
+
 const int PLAYER_START_X = 30;
 const int PLAYER_START_Y = 60;
-const unsigned int PLAYER_DEPTH = 0;
 
+
+const unsigned int INVALID_DEPTH = -1; //a huge number actually
+const unsigned int DEPTH_PLAYER = 0;
+const unsigned int DEPTH_SONAR = 2;
+const unsigned int DEPTH_DIRT = 3;
 //const string DIRT_ID = "dirt";
 
 
-class Actor:public GraphObject
+class Actor :public GraphObject
 {
 public:
-	Actor(CoordType x, CoordType y, int IID, Direction dir, double imageSize, unsigned int depth, StudentWorld* sw, bool solidity = false):
-		GraphObject(IID, x, y, dir, imageSize, depth)
+	/*
+	Actor(int IID, unsigned int depth, StudentWorld* sw, double imageSize):GraphObject(IID, -1, -1, right, imageSize, depth)
+	{
+		m_sw = sw;
+		setVisible(true); //by default
+		m_is_solid = false; //everything except Boulders is not solid
+		m_width = imageSize * SPRITE_WIDTH;
+		m_height = imageSize * SPRITE_HEIGHT;
+	}
+	*/
+	Actor(CoordType x, CoordType y, int IID,  unsigned int depth, StudentWorld* sw, double imageSize, bool solidity = false):
+		GraphObject(IID, x, y, right, imageSize, depth)
 	{
 		m_sw = sw;
 		setVisible(true); //by default
@@ -63,13 +78,13 @@ public:
 	}
 
 
-	virtual ~Actor() {};
+	virtual ~Actor() { setVisible(false); }
 
 	//doSomething()
 	virtual int doSomething() = 0;
 	
 	//gives bottom-left corner (i.e. what's returned by getX/Y)
-	void sendLocation(CoordType& x, CoordType& y)
+	void sendLocation(CoordType& x, CoordType& y) const
 	{
 		x = getX();
 		y = getY();
@@ -80,16 +95,17 @@ public:
 	int getIdentity() const{ return m_id; }
 	double getWidth() const { return m_width; }
 	double getHeight() const { return m_height; }
+	bool isDead() const { return m_isDead; }
 
 	//to be used for overlap function
 	double getMaxLength() const;
 
 	//Gives "effective" (x,y) based on sprite size and current direction
 	//Returns true if the input parameters x or y were changed. Otherwise returns false.
-	bool sendEffectiveLocation(CoordType& x, CoordType& y, const Direction dir);
+	bool sendEffectiveLocation(CoordType& x, CoordType& y, const Direction dir) const;
 
 	// Reverses the actions of sendToEffectiveLocation on the parameters x and y
-	void reverseTransform(CoordType& x, CoordType& y, const Direction dir);
+	void reverseTransform(CoordType& x, CoordType& y, const Direction dir) const;
 
 	void putAtSpriteCorner(Corner c, CoordType& x, CoordType& y) const;
 
@@ -100,7 +116,7 @@ public:
 protected:
 	void setIdentityAs(int id) {m_id = id;}
 
-
+	void die() { m_isDead = true; }
 
 	//helper functions
 
@@ -113,6 +129,7 @@ private:
 	int m_id;
 	CoordType m_width;
 	CoordType m_height;
+	bool m_isDead;
 	//GraphObject m_go;
 
 };
@@ -122,13 +139,15 @@ class Dirt :public Actor
 {
 public:
 	//default constructor for the purposes of initializing the m_dirts array
-	//Dirt() :Actor(-1, -1, IID_DIRT, right, DIRT_IMAGE_SIZE, DIRT_DEPTH, nullptr)
+	//Dirt() :Actor(-1, -1, IID_DIRT, right, DIRT_IMAGE_SIZE, DEPTH_DIRT, nullptr)
 	//{
 	//	setVisible(true);
 	//};
+	//Actor(CoordType x, CoordType y, int IID, Direction dir, unsigned int depth, StudentWorld* sw, double imageSize, bool solidity = false) :
 
-	Dirt(int x, int y, StudentWorld* sw) :Actor(x, y, IID_DIRT, right, DIRT_IMAGE_SIZE, DIRT_DEPTH, sw)
+	Dirt(CoordType x, CoordType y, StudentWorld* sw) :Actor(x, y, IID_DIRT, DEPTH_DIRT, sw, DIRT_IMAGE_SIZE)
 	{
+		setDirection(right);
 		setVisible(true);
 		setIdentityAs(IID_DIRT);
 	};
@@ -140,18 +159,18 @@ public:
 
 	virtual int doSomething()
 	{
-		return 0; //do nothing (how boring!)
+		return return; //do nothing (how boring!)
 	};
 
 
 private:
 };
 
-
+//all DynamicObjects are of the size USUAL_IMAGE_SIZE
 class DynamicObject :public Actor
 {
 public:
-	DynamicObject(int x, int y, int IID, Direction dir, int depth, StudentWorld* sw) :Actor(x, y, IID, dir, NORMAL_IMAGE_SIZE, depth, sw)
+	DynamicObject(int x, int y, int IID, unsigned int depth, StudentWorld* sw, double imageSize = NORMAL_IMAGE_SIZE) :Actor(x, y, IID, depth, sw, imageSize)
 	{};
 
 	virtual ~DynamicObject()
@@ -162,9 +181,7 @@ public:
 	
 	//bool setDir(Direction dir) {}; //covered by GraphObject::setDirection(Direction d);
 
-	//whether the movable object is annoyed
-	virtual bool isAnnoyed() = 0;
-	virtual int attemptAnnoyedAction() = 0;
+
 
 
 
@@ -181,27 +198,32 @@ public:
 
 };
 
-/*
-class StaticObject :public Actor
+//whether the movable object is annoyed
+//virtual bool isAnnoyed() = 0;
+//virtual int attemptAnnoyedAction() = 0;
+
+
+class AnnoyableActor :public DynamicObject
 {
 public:
-	StaticObject(int x, int y, int IID, Direction dir, int depth, StudentWorld* sw) :Actor(x, y, IID, dir, NORMAL_IMAGE_SIZE, depth, sw)
-	{};
 
-	virtual ~StaticObject()
-	{};
 
+	virtual bool isAnnoyed() { return m_annoyed; }
+	//virtual int attemptAnnoyedAction() = 0;
+
+protected:
+	virtual void setAnnoyed() = 0;
+private:
+	bool m_annoyed;
 };
-*/
 
 
 
 
-
-class FrackMan :public DynamicObject
+class FrackMan :public AnnoyableActor
 {
 public:
-	FrackMan(StudentWorld* sw):DynamicObject(PLAYER_START_X, PLAYER_START_Y, IID_PLAYER, right, PLAYER_DEPTH, sw)
+	FrackMan(StudentWorld* sw):AnnoyableActor(PLAYER_START_X, PLAYER_START_Y, IID_PLAYER, DEPTH_PLAYER, sw)
 	{
 		m_hp = PLAYER_START_HEALTH;
 		m_squirts = PLAYER_START_SQUIRTS;
@@ -233,9 +255,10 @@ public:
 
 
 	virtual bool doSpecializedAction();
-	bool removeDirt(const Direction dir, const int& x, const int& y);
+	//bool removeDirt(const Direction dir, const int& x, const int& y);
 
 protected:
+	virtual void setAnnoyed() {};
 	//virtual bool setDir(int dir);
 private:
 	int m_hp;
@@ -255,13 +278,80 @@ private:
 
 
 
-class Goodie :public Actor
+//entirely made to have a branch to oppose DynamicObject -- doesn't actually add much in terms of features
+// (at least, that I can think of at the moment...)
+class StaticObject :public Actor
 {
 public:
+	StaticObject(CoordType x, CoordType y, int IID, unsigned int depth, StudentWorld* sw, double imageSize = NORMAL_IMAGE_SIZE, bool solidity = false) :
+		Actor(x, y, IID, depth, sw, imageSize)
+	{
 
-protected:
+	}
+	
+	virtual ~StaticObject() {};
 
 };
+
+
+enum Group {player, enemies, anyone};
+//from spec (double-check though!)
+const double DISTANCE_COLLECT = 3;
+const double DISTANCE_DISCOVER = 4;
+
+class Goodie :public StaticObject
+{
+public:
+	Goodie(CoordType x, CoordType y, int IID, unsigned int depth, StudentWorld* sw) :
+		StaticObject(x, y, IID, depth, sw)
+	{
+		setVisible(false); //most start off invisible
+		m_score = 0;
+		m_whoCanPickMeUp = player;
+	}
+	virtual ~Goodie() {};
+
+	virtual int doSomething()
+	{
+		//getWorld()->distance
+	}
+
+	//picking up Goodies gives a score...
+	int giveScore() const { return m_score; }
+	Group whoCanPickMeUp() const { return m_whoCanPickMeUp; }
+
+protected:
+	void setScore(int score) { m_score = score; }
+	void setPickUpGroup(Group g) { m_whoCanPickMeUp = g; }
+private:
+	int m_score;
+	Group m_whoCanPickMeUp;
+};
+
+class Sonar : public Goodie
+{
+public:
+	Sonar(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_SONAR, unsigned int depth = DEPTH_SONAR);
+	virtual ~Sonar() {};
+
+	virtual int doSomething()
+	{
+		if (isDead())
+			return;
+		m_ticksLeft--;
+		if (m_ticksLeft == 0)
+		{
+			die();
+			return;
+		}
+
+	}
+
+private:
+	int m_ticksLeft;
+
+};
+
 
 class Water :public Goodie
 {
@@ -277,6 +367,9 @@ class Oil :public Goodie
 {
 
 };
+
+
+
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 
 

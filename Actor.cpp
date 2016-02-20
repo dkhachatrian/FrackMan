@@ -1,12 +1,13 @@
 #include "Actor.h"
 #include "StudentWorld.h"
 
-
+//int max(int x, int y);
 // Actor functions
+
 
 //Gives "effective" (x,y) based on sprite size and current direction
 //Returns true if the input parameters x or y are different from the values given by getX/Y.
-bool Actor::sendEffectiveLocation(CoordType& x, CoordType& y, const Direction dir)
+bool Actor::sendEffectiveLocation(CoordType& x, CoordType& y, const Direction dir) const
 {
 	//sendLocation(x, y);
 
@@ -31,7 +32,7 @@ bool Actor::sendEffectiveLocation(CoordType& x, CoordType& y, const Direction di
 }
 
 // Reverses the actions of sendToEffectiveLocation on the parameters x and y
-void Actor::reverseTransform(CoordType& x, CoordType& y, const Direction dir)
+void Actor::reverseTransform(CoordType& x, CoordType& y, const Direction dir) const
 {
 	switch (dir)
 	{
@@ -219,6 +220,28 @@ bool FrackMan::doSpecializedAction()
 	}
 	return removedDirt;
 }
+
+
+
+
+// Sonar Functions
+
+Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw, int IID = IID_SONAR, unsigned int depth = DEPTH_SONAR):
+	Goodie(x, y, IID, depth, sw)
+{
+	setDirection(right);
+	setVisible(true);
+	setPickUpGroup(player);
+
+	m_ticksLeft = max(100, 10 * getWorld()->getLevel()); //it doesn't see the function in StudentWorld.h?
+}
+
+
+
+
+
+
+
 
 
 

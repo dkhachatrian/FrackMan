@@ -518,8 +518,41 @@ int StudentWorld::overlap(const Actor* a, const Actor* b) const
 	*/
 }
 
+double StudentWorld::distanceBetweenActors(const Actor* a, const Actor* b) const
+{
+	CoordType x1, x2, y1, y2;
+	a->sendLocation(x1, y1);
+	b->sendLocation(x2, y2);
 
+	return distance(x1, y1, x2, y2);
+}
 
+//NOTE: incomplete
+bool StudentWorld::isGoodieCollected(const Actor* caller, Group g) const
+{
+
+	switch(g)
+	{
+	case player:
+		if (distanceBetweenActors(caller, m_player) <= DISTANCE_COLLECT)
+			return true;
+		break;
+	case enemies:
+		for (int i = 0; i < m_actors.size(); i++)
+		{
+			Actor* p = m_actors[i];
+			if (!(p->getID() == IID_PROTESTER || p->getID() == IID_HARD_CORE_PROTESTER))
+				break;
+			if (distanceBetweenActors(caller, p) <= DISTANCE_COLLECT)
+				return true;
+		}
+		break;
+	case anyone:
+		break; //will fill in if it ends up being necessary...
+	}
+	//if it didn't match with anyone, it hasn't been picked up
+	return false;
+}
 
 
 // Helper functions

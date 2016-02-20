@@ -31,7 +31,7 @@ public:
 	StudentWorld(std::string assetDir);
 	virtual ~StudentWorld();
 
-	bool hasPlayerWon() const { return (m_barrels == 0); }
+	bool hasPlayerWon() const { return (m_barrelsLeft == 0); }
 
 	void StudentWorld::setDisplayText();
 	std::string formatDisplayText(int score, int level, int lives,
@@ -61,12 +61,14 @@ public:
 	bool removeDirt(const GraphObject::Direction dir, const CoordType& x, const CoordType& y);
 
 	std::vector<Actor*>* getActors() { return &(m_actors); }
+	Actor* getPlayer() { return m_player; }
 
+	bool StudentWorld::isGoodieCollected(const Actor* caller, Group g) const;
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
 	bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir);
 
-
+	double distanceBetweenActors(const Actor* a, const Actor* b) const;
 
 	Dirt*** getDirts() { return m_dirts; }
 
@@ -111,7 +113,8 @@ private:
 // Helper functions
 
 double distance(int x1, int y1, int x2, int y2);
-
+int min(int x, int y);
+int max(int x, int y);
 //int overlap(Actor* a, Actor* b);
 
 
