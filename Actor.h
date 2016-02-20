@@ -67,7 +67,13 @@ public:
 
 	//doSomething()
 	virtual int doSomething() = 0;
-
+	
+	//gives bottom-left corner (i.e. what's returned by getX/Y)
+	void sendLocation(CoordType& x, CoordType& y)
+	{
+		x = getX();
+		y = getY();
+	}
 
 	StudentWorld* getWorld() const { return m_sw; }
 	bool isSolid() const{ return m_is_solid; }
@@ -80,7 +86,7 @@ public:
 
 	//Gives "effective" (x,y) based on sprite size and current direction
 	//Returns true if the input parameters x or y were changed. Otherwise returns false.
-	bool sendToEffectiveLocation(CoordType& x, CoordType& y, const Direction dir);
+	bool sendEffectiveLocation(CoordType& x, CoordType& y, const Direction dir);
 
 	// Reverses the actions of sendToEffectiveLocation on the parameters x and y
 	void reverseTransform(CoordType& x, CoordType& y, const Direction dir);
@@ -89,7 +95,7 @@ public:
 
 	bool isInsideMySprite(const CoordType& x, const CoordType& y) const;
 
-	Corner relativeLocationTo(Actor* other) const;
+	Corner relativeLocationTo(const Actor* other) const;
 	//accessor functions for GraphObject (should never change!)
 	//maybe move these to protected?
 	/*
@@ -212,7 +218,7 @@ public:
 	//changes x_s,y_s (copies of the coordinates of Actor who called it)
 	// to where the Actor wants to go.
 	// Returns true if no boundary or solid object (i.e. Boulder) is in the way, false otherwise.
-	virtual bool canMoveInDirection(const Direction dir, int& x, int& y);
+	//virtual bool canMoveInDirection(const Direction dir, int& x, int& y);
 
 
 	// Does not change anything

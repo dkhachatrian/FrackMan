@@ -31,8 +31,9 @@ public:
 	StudentWorld(std::string assetDir);
 	virtual ~StudentWorld();
 
-	bool hasPlayerWon() const;
+	bool hasPlayerWon() const { return (m_barrels == 0); }
 
+	//bool canItMoveInDirection(const DynamicObject* a, const GraphObject::Direction dir) const;
 	
 	//to be completed after Part 1
 	/*
@@ -85,8 +86,8 @@ public:
 	std::vector<Actor*>* getActors() { return &(m_actors); }
 
 
-	bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
-	bool StudentWorld::canMoveInDirection(DynamicObject* caller, const GraphObject::Direction moveDir);
+	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
+	bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir);
 
 
 
@@ -96,9 +97,9 @@ public:
 	bool isThereDirtAt(int x, int y) { return (m_dirts[x][y] != nullptr); }
 
 
-	bool isInvalidLocation(int x, int y) { return (x < 0 || x >= VIEW_WIDTH || y < 0 || y >= VIEW_HEIGHT); }
+	bool isInvalidLocation(int x, int y) const { return (x < 0 || x >= VIEW_WIDTH || y < 0 || y >= VIEW_HEIGHT); }
 
-	int overlap(Actor* a, Actor* b);
+	int overlap(const Actor* a, const Actor* b) const;
 
 
 private:

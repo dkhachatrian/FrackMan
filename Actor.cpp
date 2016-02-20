@@ -5,23 +5,30 @@
 // Actor functions
 
 //Gives "effective" (x,y) based on sprite size and current direction
-//Returns true if the input parameters x or y were changed. Otherwise returns false.
-bool Actor::sendToEffectiveLocation(CoordType& x, CoordType& y, const Direction dir)
+//Returns true if the input parameters x or y are different from the values given by getX/Y.
+bool Actor::sendEffectiveLocation(CoordType& x, CoordType& y, const Direction dir)
 {
+	//sendLocation(x, y);
+
 	switch (dir)
 	{
 	case up:
-		y += (getHeight() - 1); //looking for overlap of sprites so need to fix the offset between "location" and sprite
+		putAtSpriteCorner(top_left, x, y);
+		break;
+		//y += (getHeight() - 1); //looking for overlap of sprites so need to fix the offset between "location" and sprite
 								  // (SPRITE_DIMENSION - 1) puts the coordinate on the other edge of the sprite
-		return true;
+		//return true;
 	case right:
-		x += (getWidth() - 1);
-		return true;
+		putAtSpriteCorner(bottom_right, x, y);
+		break;
+		//return true;
 	default:
+		putAtSpriteCorner(DEFAULT_CORNER, x, y);
 		return false;
 	}
-}
 
+	return (x != getX() || y != getY()); //aka if 'up' or 'right' were selected
+}
 
 // Reverses the actions of sendToEffectiveLocation on the parameters x and y
 void Actor::reverseTransform(CoordType& x, CoordType& y, const Direction dir)
@@ -69,7 +76,7 @@ void Actor::putAtSpriteCorner(Corner c, CoordType& x, CoordType& y) const
 	return;
 }
 
-
+// Returns whether a coordinate is in an Actor's "hitbox"
 bool Actor::isInsideMySprite(const CoordType& x, const CoordType& y) const
 {
 	int m_x = getX();
@@ -99,7 +106,7 @@ double Actor::getMaxLength() const
 //	(e.g. this(2,7) and other(3,1) returns bottom_right
 // (e.g. this(2,7) and other(2,1) returns top_left
 
-Corner Actor::relativeLocationTo(Actor* other) const
+Corner Actor::relativeLocationTo(const Actor* other) const
 {
 	CoordType x1, x2, y1, y2;
 
@@ -124,48 +131,55 @@ Corner Actor::relativeLocationTo(Actor* other) const
 
 }
 
+
+
+
+
+
 // DynamicObject functions
 
 
 bool DynamicObject::attemptMove(const Direction dir)
 {
-	int x_n = getX();
-	int y_n = getY();
+	CoordType x_n, y_n;
+
+	sendLocation(x_n, y_n);
 
 
 	//make "effective" x,y coordinates due to sprites
 	//(i.e., shift y up SPRITE_HEIGHT squares if trying to go up
 	//			or x right SPRITE_WIDTH squares if trying to go right)
 
-	bool transformed = sendToEffectiveLocation(x_n, y_n, dir);
+	//bool transformed = sendEffectiveLocation(x_n, y_n, dir);
 
-	bool a = !moveMatchesDir(dir);
-	bool b = !canMoveInDirection(dir, x_n, y_n);
+	//bool a = moveMatchesDir(dir);
+	//bool b = !canMoveInDirection(dir, x_n, y_n);
 
-	if (a || b)
+	if (!moveMatchesDir(dir))
 	{
 		GraphObject::setDirection(dir);
 		moveTo(getX(), getY()); //"move" with no change in coordinates to have animation play
-		//fix the affected coordinates
 		return false; //didn't move
 	}
-	//otherwise
+	//otherwise, have the world move the DynamicObject if it can
+
+	return (getWorld()->tryToMoveMe(this, dir));
 
 
 	//fix the affected coordinates if necessary
-	if (transformed)
-		reverseTransform(x_n, y_n, dir);
+	//if (transformed)
+	//	reverseTransform(x_n, y_n, dir);
 
 	//alright
-	moveTo(x_n, y_n);
-	return true;
+	//moveTo(x_n, y_n);
+	//return true;
 
 
 
 	//return false; //for now
 }
 
-
+/*
 bool DynamicObject::canMoveInDirection(const Direction moveDir, int& x, int& y)
 {
 
@@ -215,7 +229,7 @@ bool DynamicObject::canMoveInDirection(const Direction moveDir, int& x, int& y)
 
 	return true;
 }
-
+*/
 
 // FrackMan functions
 
@@ -268,7 +282,7 @@ bool FrackMan::doSpecializedAction()
 	int y_n = getY();
 	Direction dir = getDirection();
 
-	sendToEffectiveLocation(x_n, y_n, dir);
+	sendEffectiveLocation(x_n, y_n, dir);
 
 	bool removedDirt = getWorld()->removeDirt(dir, x_n, y_n);
 

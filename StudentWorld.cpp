@@ -11,8 +11,39 @@ GameWorld* createStudentWorld(string assetDir)
 {
 	return new StudentWorld(assetDir);
 }
+/*
+bool StudentWorld::canItMoveInDirection(const DynamicObject* a, const GraphObject::Direction dir) const
+{
+	int x_t = x;
+	int y_t = y;
+
+	switch (dir)
+	{
+	case GraphObject::up:
+		//x = getX();
+		y_t = y + UP_DIR;
+		break;
+	case GraphObject::down:
+		//x = getX();
+		y_t = y + DOWN_DIR;
+		break;
+	case GraphObject::left:
+		x_t = x + LEFT_DIR;
+		//y = getY();
+		break;
+	case GraphObject::right:
+		x_t = x + RIGHT_DIR;
+		//y = getY();
+		break;
+	}
+
+	if (isInvalidLocation(x_t, y_t)) //if trying to go outside possible gridspace, bad
+		return false;
 
 
+
+}
+*/
 
 
 StudentWorld::StudentWorld(std::string assetDir)
@@ -26,15 +57,12 @@ StudentWorld::StudentWorld(std::string assetDir)
 
 }
 
-
-
 int StudentWorld::init()
 {
 	setUpDirt();
 	m_player->moveTo(PLAYER_START_X, PLAYER_START_Y); //just in case ...
 	return 0; //change later
 }
-
 
 int StudentWorld::move()
 {
@@ -93,7 +121,6 @@ void StudentWorld::cleanUp()
 	cleanUpDirt();
 	cleanUpActorsAndFrackMan();
 }
-
 StudentWorld::~StudentWorld()
 {
 	cleanUpDirt();
@@ -101,13 +128,106 @@ StudentWorld::~StudentWorld()
 }
 
 
-
-bool StudentWorld::hasPlayerWon() const
+bool StudentWorld::cleanUpActorsAndFrackMan()
 {
-	return (m_barrels == 0);
+	for (int i = 0; i < m_actors.size(); i++)
+	{
+		delete m_actors[i];
+	}
+	delete m_player;
+	/*
+	std::vector<Actor*>::iterator it = m_actors.begin();
+
+	while (it != m_actors.end())
+	{
+	delete
+	}
+	*/
+
+	return true; //everything worked (?)
 }
 
 
+//if m_dirts != nullptr, deletes all remaining Dirt objects, and sets the Dirt*'s to nullptr
+void StudentWorld::cleanUpDirt()
+{
+	if (m_dirts == nullptr)
+		return;
+
+	for (int i = 0; i < VIEW_WIDTH; i++)
+	{
+		for (int j = 0; j < VIEW_HEIGHT; j++)
+		{
+			Dirt* p = m_dirts[i][j];
+			if (p != nullptr)
+			{
+				delete p; //removes dynamically allocated Dirt objects
+				p = nullptr;
+			}
+
+		}
+		delete m_dirts[i]; //removes dynamically allocated Dirt** objects
+	}
+	delete m_dirts; //removes dynamically allocated Dirt*** object
+}
+
+//PRECONDITION: memory has been allocated to the cells in the 2D Dirt* array, m_dirts
+//POSTCONDITION: all cells in m_dirts are initialized to nullptr (==> no Dirt object at that location)
+void StudentWorld::initDirt()
+{
+	//allocates memory for 64 Dirt**'s
+	m_dirts = new Dirt**[VIEW_HEIGHT];
+
+	for (int i = 0; i < VIEW_WIDTH; i++)
+	{
+		m_dirts[i] = new Dirt*[VIEW_HEIGHT]; //allocates memory for 64 Dirt*'s
+		for (int j = 0; j < VIEW_HEIGHT; j++)
+		{
+			m_dirts[i][j] = nullptr; //initializes everything to nullptr
+		}
+
+	}
+
+}
+
+// Dirt is added BEFORE putting in Boulders
+void StudentWorld::setUpDirt()
+{
+	//make extra sure the grid is clean
+
+	//cleanUpDirt();
+
+	//fill in the dirt
+	for (int i = 0; i < VIEW_WIDTH; i++) //horizontal direction
+	{
+		for (int j = 0; j < VIEW_HEIGHT; j++) //vertical direction (STARTING FROM TOP)
+		{
+
+			if (j >= Y_UPPER_BOUND) //don't fill in top rows, to give space for initial Actors
+			{
+				m_dirts[i][j] = nullptr; //aka no dirt
+			}
+			else if (i >= (VIEW_HEIGHT/2 - SPRITE_WIDTH_R) //30
+				&& i < (VIEW_HEIGHT/2 + SPRITE_WIDTH_R) //34
+				&& j >= (SPRITE_HEIGHT)) //4
+													 //don't fill in the "mine shaft" (30<=x<34) 0<=y<60 according to array locations)
+			{
+				m_dirts[i][j] = nullptr; //aka no dirt
+			}
+			//if I got here, it's safe to fill in some dirt!
+			//create new Dirt object and put it in the appropriate spot in the m_dirts[][]
+			else
+			{
+				m_dirts[i][j] = new Dirt(i, j, this);
+			}
+			
+		}
+
+
+	}
+}
+
+// For FrackMan class.
 //x and y start at the topmost or leftmost square of dirt to be removed depending on the direction of movement:
 // "up or down" --> x is leftmost
 // "left or right" --> y is topmost
@@ -160,104 +280,6 @@ bool StudentWorld::removeDirt(const GraphObject::Direction dir, const CoordType&
 
 
 
-// Dirt is added BEFORE putting in Boulders
-void StudentWorld::setUpDirt()
-{
-	//make extra sure the grid is clean
-
-	//cleanUpDirt();
-
-	//fill in the dirt
-	for (int i = 0; i < VIEW_WIDTH; i++) //horizontal direction
-	{
-		for (int j = 0; j < VIEW_HEIGHT; j++) //vertical direction (STARTING FROM TOP)
-		{
-
-			if (j >= Y_UPPER_BOUND) //don't fill in top rows, to give space for initial Actors
-			{
-				m_dirts[i][j] = nullptr; //aka no dirt
-			}
-			else if (i >= (VIEW_HEIGHT/2 - SPRITE_WIDTH_R) //30
-				&& i < (VIEW_HEIGHT/2 + SPRITE_WIDTH_R) //34
-				&& j > (SPRITE_HEIGHT)) //4
-													 //don't fill in the "mine shaft" (30<=x<34) 0<=y<60 according to array locations)
-			{
-				m_dirts[i][j] = nullptr; //aka no dirt
-			}
-			//if I got here, it's safe to fill in some dirt!
-			//create new Dirt object and put it in the appropriate spot in the m_dirts[][]
-			else
-			{
-				m_dirts[i][j] = new Dirt(i, j, this);
-			}
-			
-		}
-
-
-	}
-}
-
-//if m_dirts != nullptr, deletes all remaining Dirt objects, and sets the Dirt*'s to nullptr
-void StudentWorld::cleanUpDirt()
-{
-	if (m_dirts == nullptr)
-		return;
-
-	for (int i = 0; i < VIEW_WIDTH; i++)
-	{
-		for (int j = 0; j < VIEW_HEIGHT; j++)
-		{
-			Dirt* p = m_dirts[i][j];
-			if (p != nullptr)
-			{
-				delete p; //removes dynamically allocated Dirt objects
-				p = nullptr;
-			}
-
-		}
-		delete m_dirts[i]; //removes dynamically allocated Dirt** objects
-	}
-	delete m_dirts; //removes dynamically allocated Dirt*** object
-}
-
-//PRECONDITION: memory has been allocated to the cells in the 2D Dirt* array, m_dirts
-//POSTCONDITION: all cells in m_dirts are initialized to nullptr (==> no Dirt object at that location)
-void StudentWorld::initDirt()
-{
-	//allocates memory for 64 Dirt**'s
-	m_dirts = new Dirt**[VIEW_HEIGHT];
-
-	for (int i = 0; i < VIEW_WIDTH; i++)
-	{
-		m_dirts[i] = new Dirt*[VIEW_HEIGHT]; //allocates memory for 64 Dirt*'s
-		for (int j = 0; j < VIEW_HEIGHT; j++)
-		{
-			m_dirts[i][j] = nullptr; //initializes everything to nullptr
-		}
-
-	}
-
-}
-
-
-bool StudentWorld::cleanUpActorsAndFrackMan()
-{
-	for (int i = 0; i < m_actors.size(); i++)
-	{
-		delete m_actors[i];
-	}
-	delete m_player;
-	/*
-	std::vector<Actor*>::iterator it = m_actors.begin();
-
-	while (it != m_actors.end())
-	{
-		delete 
-	}
-	*/
-
-	return true; //everything worked (?)
-}
 
 
 // Helper functions
@@ -268,7 +290,7 @@ double distance(int x1, int y1, int x2, int y2)
 }
 
 
-
+/*
 bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir)
 {
 	int x_n = caller->getX();
@@ -279,7 +301,7 @@ bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Directi
 	//(i.e., shift y up SPRITE_HEIGHT squares if trying to go up
 	//			or x right SPRITE_WIDTH squares if trying to go right)
 
-	bool transformed = caller->sendToEffectiveLocation(x_n, y_n, dir);
+	bool transformed = caller->sendEffectiveLocation(x_n, y_n, dir);
 
 	bool a = !caller->moveMatchesDir(dir);
 	bool b = !canMoveInDirection(caller, dir);
@@ -302,19 +324,18 @@ bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Directi
 	return true;
 
 }
+*/
 
 
-
-//PRECONDITON:
-bool StudentWorld::canMoveInDirection(DynamicObject* caller, const GraphObject::Direction moveDir)
+//PRECONDITON: caller has already checked that it's attempted to move in the same direction as it's facing
+//POSTCONDITON: Moves the caller in the appropriate direction if possible, returning true. Else, returns false.
+bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir)
 {
-
-	int x_t = caller->getX();
-	int y_t = caller->getY();
-
+	CoordType x_t, y_t;
+	//caller->sendLocation(x_t, y_t);
 
 
-	bool transformed = caller->sendToEffectiveLocation(x_t, y_t, moveDir);
+	bool transformed = caller->sendEffectiveLocation(x_t, y_t, moveDir);
 
 	switch (moveDir)
 	{
@@ -337,19 +358,27 @@ bool StudentWorld::canMoveInDirection(DynamicObject* caller, const GraphObject::
 	}
 
 	if (isInvalidLocation(x_t, y_t)) //if trying to go outside possible gridspace, bad
+	{
+		caller->moveTo(caller->getX(), caller->getY()); //make it 'move' in place for animation
 		return false;
+	}
+		//return false;
 
-	std::vector<Actor*>::iterator it = m_actors.begin();
+
+
+
+	//std::vector<Actor*>::iterator it = m_actors.begin();
 
 	//check over all Actors
-	while (it != m_actors.end())
+	for (int i = 0; i < m_actors.size(); i++)
 	{
-		if (overlap(caller, (*it)) == TOUCHING) //see if there's one where the Actor is trying to go
+		Actor* p = m_actors[i];
+		if (overlap(caller, p) == TOUCHING)
 		{
-			if ((*it)->isSolid()) //if the thing there is solid (i.e. Boulder), bad
-				return false;
+			if (p->isSolid()) //if the thing there is solid (i.e. Boulder), bad
+				return false; //does NOT 'move' the caller (not supposed to animate!)
 		}
-		it++;
+
 	}
 
 	//otherwise, we should be good to go!
@@ -372,7 +401,7 @@ bool StudentWorld::canMoveInDirection(DynamicObject* caller, const GraphObject::
 
 
 //overlap compares the bottom-left corner of each sprite to determine overlap (should always be a valid comparison)
-int StudentWorld::overlap(Actor* a, Actor* b)
+int StudentWorld::overlap(const Actor* a, const Actor* b) const
 {
 	//if the Actors are far away...
 	CoordType xa, ya, xb, yb;
