@@ -75,7 +75,7 @@ int StudentWorld::init()
 
 	CoordType x, y;
 	
-	m_player->moveTo(PLAYER_START_X, PLAYER_START_Y); //just in case ...
+	//m_player->moveTo(PLAYER_START_X, PLAYER_START_Y); //just in case ...
 
 	//parameters for the level
 	m_bouldersLeft = min(getLevel() / 2 + 2, 6);
@@ -91,6 +91,7 @@ int StudentWorld::init()
 		if(foundSpot)
 		{ 
 			Boulder* p = new Boulder(x, y, this, IID_BOULDER, DEPTH_BOULDER);
+			p->moveTo(x, y);
 			removeDirtForActor(p);
 			m_actors.push_back(p); //keep track of the Actors
 			i++;
@@ -304,7 +305,7 @@ void StudentWorld::removeDirtForActor(const Actor* a)
 {
 	for (int i = 0; i < a->getWidth(); i++)
 		for (int j = 0; j < a->getHeight(); j++)
-			removeDirtFromLocation(a->getX() + i, a->getX() + j);
+			removeDirtFromLocation(a->getX() + i, a->getY() + j);
 }
 
 bool StudentWorld::removeDirtFromLocation(const int& x, const int& y)
@@ -405,20 +406,54 @@ bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int
 	return (numAttempts != MAX_ATTEMPTS); //if it didn't reach the max number of attempts, a spot was found
 }
 
+//isThereDirtInDirectionOfActor;
 
-bool StudentWorld::isThereDirtBelowActor(const Actor* caller) const
+bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const
 {
 	CoordType x, y;
 	caller->sendLocation(x, y);
 
-	if (y == 0)
-		return false; //there can't be dirt under it if it's at the bottom!
 
-	for (int k = 0; k < caller->getWidth(); k++)
-		if (m_dirts[x + k][y - 1] == nullptr)
-			return false;
-	//if it made it here, we're good
-	return true;
+	//if (y == 0)
+	//	return false; //there can't be dirt under it if it's at the bottom!
+
+	switch (caller->getDirection())
+	{
+	case GraphObject::down:
+		if (y == 0)
+			return false; //nothing below the bottom!
+		for (int k = 0; k < caller->getWidth(); k++)
+			if (m_dirts[x + k][y - 1] != nullptr)
+				return true;
+		//if it made it here, all of the ones underneath are nullptr --> no dirt underneath
+		return false;
+	case GraphObject::up:
+		if (y == Y_UPPER_BOUND)
+			return false; //nothing above the top!
+		for (int k = 0; k < caller->getWidth(); k++)
+			if (m_dirts[x + k][y + caller->getHeight()] != nullptr)
+				return true;
+		//if it made it here, all of the ones underneath are nullptr --> no dirt underneath
+		return false;
+	case GraphObject::left:
+		if (x == 0)
+			return false; //nothing left of the left edge!
+		for (int k = 0; k < caller->getHeight(); k++)
+			if (m_dirts[x - 1][y + k] != nullptr)
+				return true;
+		//if it made it here, all of the ones underneath are nullptr --> no dirt underneath
+		return false;
+	case GraphObject::right:
+		if (x == X_UPPER_BOUND)
+			return false; //nothing right of the right edge!
+		for (int k = 0; k < caller->getHeight(); k++)
+			if (m_dirts[x + caller->getWidth()][y + k] != nullptr)
+				return true;
+		//if it made it here, all of the ones underneath are nullptr --> no dirt underneath
+		return false;
+	}
+	
+
 
 }
 
@@ -492,8 +527,7 @@ void StudentWorld::setUpDirt()
 			//create new Dirt object and put it in the appropriate spot in the m_dirts[][]
 			else
 			{
-				m_dirts[i][j] = new Dirt(this);
-				m_dirts[i][j]->moveTo(i, j);
+				m_dirts[i][j] = new Dirt(this, i, j);
 			}
 			
 		}
@@ -623,10 +657,10 @@ std::string StudentWorld::formatDisplayText(int score, int level, int lives,
 bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir)
 {
 	CoordType x_t, y_t;
-	//caller->sendLocation(x_t, y_t);
+	caller->sendLocation(x_t, y_t);
 
 
-	bool transformed = caller->sendEffectiveLocation(x_t, y_t, moveDir);
+	//bool transformed = caller->sendEffectiveLocation(x_t, y_t, moveDir); //causes problems when approaching from the left
 
 	switch (moveDir)
 	{
@@ -655,11 +689,15 @@ bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Directi
 	}
 		//return false;
 
-
-
+	//if Actor's current location doesn't have it run into a boulder,
+	//but moving it in the place he'd like to would change it
+	if (!isActorAffectedByGroup(caller, boulders, INTERACTED) && isLocationAffectedByGroup(x_t, y_t, boulders, INTERACTED))
+	{
+		return false; //don't move, no animation either
+	}
 
 	//std::vector<Actor*>::iterator it = m_actors.begin();
-
+	/*
 	//check over all Actors
 	for (int i = 0; i < m_actors.size(); i++)
 	{
@@ -671,12 +709,13 @@ bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Directi
 		}
 
 	}
-
+	*/
 	//otherwise, we should be good to go!
 	//update (x,y) and get out
 
-	if(transformed)
-		caller->reverseTransform(x_t, y_t, moveDir); //fixes the possible translation done by sendToEffectiveLocation()
+	//not transforming anymore, so don't need this
+	//if(transformed)
+	//	caller->reverseTransform(x_t, y_t, moveDir); //fixes the possible translation done by sendToEffectiveLocation()
 	//x_t or y_t has also already been moved by one square according to moveDir
 	//and by this point we know it's a valid move, so we're good to update the caller's location!
 
@@ -790,6 +829,16 @@ double StudentWorld::distanceBetweenActors(const Actor* a, const Actor* b) const
 	return distance(x1, y1, x2, y2);
 }
 
+
+double StudentWorld::distanceBetweenLocationAndActor(const CoordType& x, const CoordType& y, const Actor* b) const
+{
+	CoordType x1, x2, y1, y2;
+	b->sendLocation(x2, y2);
+
+	return distance(x, y, x2, y2);
+}
+
+
 //NOTE: incomplete
 bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const int& statusOfInterest) const
 {
@@ -819,8 +868,32 @@ bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const in
 		for (int i = 0; i < m_actors.size(); i++)
 		{
 			Actor* p = m_actors[i];
+			//filter condition
 			if (!(p->getID() == IID_PROTESTER || p->getID() == IID_HARD_CORE_PROTESTER))
-				break;
+				continue;
+			if (distanceBetweenActors(caller, p) <= distanceOfInterest)
+				return true;
+		}
+		break;
+	case boulders:
+		for (int i = 0; i < m_actors.size(); i++)
+		{
+			Actor* p = m_actors[i];
+			//filter condition
+			if (!(p->getID() == IID_BOULDER))
+				continue;
+			if (distanceBetweenActors(caller, p) <= distanceOfInterest)
+				return true;
+		}
+		break;
+
+	case goodies:
+		for (int i = 0; i < m_actors.size(); i++)
+		{
+			Actor* p = m_actors[i];
+			//filter condition
+			if (!(p->getDepth() == DEPTH_GOODIE)) //conveniently, only Goodies are on Layer 2
+				continue;
 			if (distanceBetweenActors(caller, p) <= distanceOfInterest)
 				return true;
 		}
@@ -839,6 +912,81 @@ bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const in
 	//if it didn't match with anyone, it hasn't been picked up
 	return false;
 }
+
+//NOTE: incomplete
+bool StudentWorld::isLocationAffectedByGroup(const CoordType& x, const CoordType& y, Group g, const int& statusOfInterest) const
+{
+	double distanceOfInterest = -1;
+
+	switch (statusOfInterest)
+	{
+	case DISCOVERED:
+		distanceOfInterest = DISTANCE_DISCOVER;
+		break;
+	case INTERACTED:
+		distanceOfInterest = DISTANCE_INTERACT;
+		break;
+	case PLACED: //only on init
+		distanceOfInterest = DISTANCE_PLACEMENT;
+		break;
+	}
+
+
+	switch (g)
+	{
+	case player:
+		if (distanceBetweenLocationAndActor(x, y, m_player) <= distanceOfInterest)
+			return true;
+		break;
+	case enemies:
+		for (int i = 0; i < m_actors.size(); i++)
+		{
+			Actor* p = m_actors[i];
+			//filter condition
+			if (!(p->getID() == IID_PROTESTER || p->getID() == IID_HARD_CORE_PROTESTER))
+				continue;
+			if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
+				return true;
+		}
+		break;
+	case boulders:
+		for (int i = 0; i < m_actors.size(); i++)
+		{
+			Actor* p = m_actors[i];
+			//filter condition
+			if (!(p->getID() == IID_BOULDER))
+				continue;
+			if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
+				return true;
+		}
+		break;
+
+	case goodies:
+		for (int i = 0; i < m_actors.size(); i++)
+		{
+			Actor* p = m_actors[i];
+			//filter condition
+			if (!(p->getDepth() == DEPTH_GOODIE)) //conveniently, only Goodies are on Layer 2
+				continue;
+			if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
+				return true;
+		}
+		break;
+	case anyone:
+		if (distanceBetweenLocationAndActor(x, y, m_player) <= distanceOfInterest)
+			return true;
+		for (int i = 0; i < m_actors.size(); i++)
+		{
+			Actor* p = m_actors[i];
+			if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
+				return true;
+		}
+		break; //will fill in if it ends up being necessary...
+	}
+	//if it didn't match with anyone, it hasn't been picked up
+	return false;
+}
+
 
 
 // Helper functions

@@ -83,7 +83,8 @@ public:
 	Actor( int IID,  unsigned int depth, StudentWorld* sw, double imageSize, CoordType x = -1, CoordType y = -1, bool solidity = false):
 		GraphObject(IID, x, y, right, imageSize, depth)
 	{
-		moveTo(x, y);
+		//moveTo(x, y);
+		m_depth = depth;
 		m_sw = sw;
 		m_doITick = false; //most things don't think
 		m_ticksLeft = -1;
@@ -92,6 +93,7 @@ public:
 		m_height = imageSize * SPRITE_HEIGHT;
 		setVisibility(true);
 		m_isDead = false;
+		m_dir = right;
 		//m_visible = true; //by default
 		//setVisible(true); //by default
 	}
@@ -100,6 +102,12 @@ public:
 	{
 		setVisible(x);
 		setVisibleFlag(x);
+	}
+
+	inline void setDir(Direction d)
+	{
+		setDirection(d);
+		m_dir = d;
 	}
 
 	virtual ~Actor() { setVisible(false); }
@@ -118,12 +126,14 @@ public:
 	StudentWorld* getWorld() const { return m_sw; }
 	bool isSolid() const{ return m_is_solid; }
 	int getIdentity() const{ return m_id; }
-	double getWidth() const { return m_width; }
-	double getHeight() const { return m_height; }
+	int getWidth() const { return m_width; }
+	int getHeight() const { return m_height; }
 	bool isDead() const { return m_isDead; }
 	bool isVisible()  const { return m_visible; }
+	int getDepth() const { return m_depth; }
 
-	bool isThereDirtBelowMe() const;
+
+	bool isThereDirtNextToMe() const;
 
 	//to be used for overlap function
 	double getMaxLength() const;
@@ -172,6 +182,8 @@ private:
 	bool m_visible;
 	int m_ticksLeft;
 	bool m_doITick;
+	int m_depth;
+	Direction m_dir;
 	//GraphObject m_go;
 
 };
@@ -187,9 +199,9 @@ public:
 	//};
 	//Actor(CoordType x, CoordType y, int IID, Direction dir, unsigned int depth, StudentWorld* sw, double imageSize, bool solidity = false) :
 
-	Dirt(StudentWorld* sw) :Actor(IID_DIRT, DEPTH_DIRT, sw, DIRT_IMAGE_SIZE)
+	Dirt(StudentWorld* sw, CoordType x, CoordType y) : Actor(IID_DIRT, DEPTH_DIRT, sw, DIRT_IMAGE_SIZE, x, y)
 	{
-		setDirection(right);
+		setDir(right);
 		setVisibility(true);
 		setIdentityAs(IID_DIRT);
 	};
@@ -272,14 +284,14 @@ private:
 class FrackMan :public AnnoyableActor
 {
 public:
-	FrackMan(StudentWorld* sw):AnnoyableActor(IID_PLAYER, DEPTH_PLAYER, sw)
+	FrackMan(StudentWorld* sw, CoordType x = PLAYER_START_X, CoordType y = PLAYER_START_Y):AnnoyableActor(IID_PLAYER, DEPTH_PLAYER, sw, x, y)
 	{
 		m_hp = PLAYER_START_HEALTH;
 		m_squirts = PLAYER_START_SQUIRTS;
 		m_gold = 0;
 		m_sonar = 1;
 		setIdentityAs(IID_PLAYER);
-		setDirection(right);
+		setDir(right);
 	};
 
 	virtual int doSomething();
@@ -344,7 +356,7 @@ public:
 };
 
 
-enum Group {player, enemies, anyone};
+enum Group {player, enemies, boulders, goodies, anyone};
 //from spec (double-check though!)
 const double DISTANCE_INTERACT = 3;
 const double DISTANCE_DISCOVER = 4;

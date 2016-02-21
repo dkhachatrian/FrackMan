@@ -65,11 +65,14 @@ public:
 	FrackMan* getPlayer() { return m_player; }
 
 	bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const int& statusOfInterest) const;
+	bool StudentWorld::isLocationAffectedByGroup(const CoordType& x, const CoordType& y, Group g, const int& statusOfInterest) const;
+
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
 	bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir);
 
 	double distanceBetweenActors(const Actor* a, const Actor* b) const;
+	double distanceBetweenLocationAndActor(const CoordType& x, const CoordType& y, const Actor* b) const;
 
 	Dirt*** getDirts() { return m_dirts; }
 
@@ -81,10 +84,10 @@ public:
 	bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int& ID);
 
 
-	bool isInvalidLocation(int x, int y) const { return (x < 0 || x >= VIEW_WIDTH || y < 0 || y >= VIEW_HEIGHT); }
+	bool isInvalidLocation(int x, int y) const { return (x < 0 || x > X_UPPER_BOUND || y < 0 || y > Y_UPPER_BOUND); }
 
 	int overlap(const Actor* a, const Actor* b) const;
-	bool StudentWorld::isThereDirtBelowActor(const Actor* caller) const;
+	bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const;
 	bool StudentWorld::removeDirtFromLocation(const int& x, const int& y);
 	void StudentWorld::removeDirtForActor(const Actor* a);
 

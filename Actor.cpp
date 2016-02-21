@@ -13,9 +13,9 @@
 //		return -1;
 //}
 
-bool Actor::isThereDirtBelowMe() const
+bool Actor::isThereDirtNextToMe() const
 {
-	return getWorld()->isThereDirtBelowActor(this);
+	return getWorld()->isThereDirtInDirectionOfActor(this);
 }
 
 
@@ -156,14 +156,14 @@ Corner Actor::relativeLocationTo(const Actor* other) const
 
 bool DynamicObject::attemptMove(const Direction dir)
 {
-	CoordType x_n, y_n;
+	//CoordType x_n, y_n;
 
-	sendLocation(x_n, y_n);
+	//sendLocation(x_n, y_n);
 
 
 	if (!moveMatchesDir(dir))
 	{
-		GraphObject::setDirection(dir);
+		setDir(dir);
 		moveTo(getX(), getY()); //"move" with no change in coordinates to have animation play
 		return false; //didn't move
 	}
@@ -213,7 +213,9 @@ int FrackMan::doSomething()
 bool FrackMan::attemptMove(const Direction dir)
 {
 	bool result = DynamicObject::attemptMove(dir);
-	doSpecializedAction();
+	//only digs if he moved
+	if(result)
+		doSpecializedAction();
 
 
 	return result;
@@ -250,11 +252,11 @@ bool FrackMan::doSpecializedAction()
 Boulder::Boulder(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_BOULDER, unsigned int depth = DEPTH_BOULDER) :
 	DynamicObject(IID, depth, sw, x, y)
 {
-	moveTo(x, y);
+	//moveTo(x, y);
 
 	m_state = stable;
 	m_haveWaited = false;
-	setDirection(down);
+	setDir(down);
 	setVisibility(true);
 	setSolidityAs(true);
 }
@@ -268,7 +270,7 @@ int Boulder::doSomething()
 	{
 		//progression of states is only stable -> waiting -> falling (-> death)
 	case stable:
-		if (!isThereDirtBelowMe())
+		if (!isThereDirtNextToMe())
 		{
 			m_state = waiting;
 			m_haveWaited = true;
@@ -286,8 +288,13 @@ int Boulder::doSomething()
 		return STATIONARY;
 		break; //not necessary
 	case falling:
+		if (isThereDirtNextToMe()) //before moving down through the dirt, check if there is any dirt
+		{
+			die();
+			return DEAD;
+		}
 		bool couldMove = attemptMove(down);
-		if (!couldMove) //hit the bottom of the stage or some dirt
+		if (!couldMove) //hit the bottom of the stage
 		{
 			die();
 			return DEAD;
@@ -370,7 +377,7 @@ Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_SONA
 	Goodie(IID, sw, x, y, score)
 {
 	moveTo(x, y);
-	setDirection(right);
+	setDir(right);
 	setVisible(true);
 	setVisibleFlag(true);
 	//setPickUpGroup(player);
@@ -411,7 +418,7 @@ Barrel::Barrel(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_BA
 	moveTo(x, y);
 	setVisibility(false);
 	//setVisible(true);
-	setDirection(right);
+	setDir(right);
 }
 
 int Barrel::doSomething()
@@ -441,7 +448,7 @@ Gold::Gold(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_GOLD_F
 	Goodie(IID, sw, x, y)
 {
 	moveTo(x, y);
-	setDirection(right);
+	setDir(right);
 
 	//determine visibility and type of gold
 	Actor* f = getWorld()->getPlayer();
@@ -499,7 +506,7 @@ Water::Water(CoordType x, CoordType y, StudentWorld* sw, int score = SCORE_WATER
 	Goodie(IID, sw, x, y, SCORE_WATER_POOL)
 {
 	moveTo(x, y);
-	setDirection(right);
+	setDir(right);
 	setVisibility(true);
 	setTickStatus(true);
 	setTickNumber(max(100, 300 - (10 * getWorld()->getLevel())));
