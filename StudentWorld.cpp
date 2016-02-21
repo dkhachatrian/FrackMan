@@ -58,24 +58,44 @@ bool StudentWorld::canItMoveInDirection(const DynamicObject* a, const GraphObjec
 StudentWorld::StudentWorld(std::string assetDir)
 	: GameWorld(assetDir)
 {
-	std::vector<Actor*> m_actors;
-	m_player = new FrackMan(this);
-	m_dirts = nullptr;
-	m_barrelsLeft = -1;
-	m_goldLeft = -1;
-	m_bouldersLeft = -1;
+	//std::vector<Actor*> m_actors;
+	//m_player = new FrackMan(this);
+	//m_dirts = nullptr;
+	//m_barrelsLeft = -1;
+	//m_goldLeft = -1;
+	//m_bouldersLeft = -1;
 
-	initDirt();
+	//initDirt();
 
 }
 
+
+// for debugging
+void StudentWorld::setAllActorsAsVisible()
+{
+	for (int i = 0; i < m_actors.size(); i++)
+		m_actors[i]->setVisibility(true);
+}
+
+
 int StudentWorld::init()
 {
+	initDirt();
 	setUpDirt();
+
+	// reset FrackMan's inventory after every level
+	m_player = new FrackMan(this, PLAYER_START_X, PLAYER_START_Y);
 
 	CoordType x, y;
 	
-	//m_player->moveTo(PLAYER_START_X, PLAYER_START_Y); //just in case ...
+	/*
+	//check to see if the FrackMan is where he should be and facing where he should be facing
+	m_player->sendLocation(x, y);
+	if(!(x == PLAYER_START_X && y == PLAYER_START_Y))
+		m_player->moveTo(PLAYER_START_X, PLAYER_START_Y);
+	if (m_player->getDirection() != GraphObject::right)
+		m_player->setDir(GraphObject::right);
+		*/
 
 	//parameters for the level
 	m_bouldersLeft = min(getLevel() / 2 + 2, 6);
@@ -133,6 +153,9 @@ int StudentWorld::init()
 	
 	//setUpDirt();
 
+	//for debugging
+	//setAllActorsAsVisible();
+
 
 	return 1; //change later
 }
@@ -158,7 +181,11 @@ int StudentWorld::move()
 	removeDeadActors();
 
 	if (m_player->isDead())
+	{
+		decLives();
 		return GWSTATUS_PLAYER_DIED;
+	}
+
 	// If the player has collected all of the Barrels on the level, then
 	// return the result that the player finished the level
 	if (m_barrelsLeft == 0)
@@ -171,50 +198,6 @@ int StudentWorld::move()
 	// let them continue playing the current level
 	return GWSTATUS_CONTINUE_GAME;
 
-	/*
-	// Update the Game Status Line
-	setDisplayText();updateDisplayText(); // update the score/lives/level text at screen top
-						 // The term “Actors” refers to all Protesters, the player, Goodies,
-						 // Boulders, Barrels of oil, Holes, Squirts, the Exit, etc.
-						 // Give each Actor a chance to do something
-	for each of the actors in the game world
-	{
-		if (actor[i] is still active / alive)
-		{
-			// ask each actor to do something (e.g. move)
-			tellThisActorToDoSomething(actor[i]);
-			if (theplayerDiedDuringThisTick() == true)
-				return GWSTATUS_PLAYER_DIED;
-			if (theplayerCompletedTheCurrentLevel() == true)
-			{
-				return GWSTATUS_FINISHED_LEVEL;
-			}
-		}
-	}
-		// Remove newly-dead actors after each tick
-	removeDeadGameObjects(); // delete dead game objects
-							 // return the proper result
-	if (theplayerDiedDuringThisTick() == true)
-		return GWSTATUS_PLAYER_DIED;
-	// If the player has collected all of the Barrels on the level, then
-	// return the result that the player finished the level
-	if (theplayerCompletedTheCurrentLevel() == true)
-	{
-		playFinishedLevelSound();
-		return GWSTATUS_FINISHED_LEVEL;
-	}
-	// the player hasn’t completed the current level and hasn’t died
-	// let them continue playing the current level
-	return GWSTATUS_CONTINUE_GAME;
-	*/
-
-	// This code is here merely to allow the game to build, run, and terminate after you hit enter a few times.
-	// Notice that the return value GWSTATUS_PLAYER_DIED will cause our framework to end the current level.
-	//return GWSTATUS_CONTINUE_GAME;
-
-
-	//decLives();
-	//return GWSTATUS_PLAYER_DIED;
 }
 
 void StudentWorld::cleanUp()
@@ -249,10 +232,14 @@ void StudentWorld::removeDeadActors()
 
 bool StudentWorld::cleanUpActorsAndFrackMan()
 {
+	//kill all the Actors
 	for (int i = 0; i < m_actors.size(); i++)
 	{
-		delete m_actors[i];
+		m_actors[i]->die();
 	}
+	//then remove them all from the vector of Actor*
+	removeDeadActors();
+
 	delete m_player;
 	/*
 	std::vector<Actor*>::iterator it = m_actors.begin();
@@ -838,16 +825,19 @@ double StudentWorld::distanceBetweenLocationAndActor(const CoordType& x, const C
 	return distance(x, y, x2, y2);
 }
 
-
+/*
 //NOTE: incomplete
-bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const int& statusOfInterest) const
+bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const int& statusOfInterest, bool usedSonar = false) const
 {
 	double distanceOfInterest = -1;
 
 	switch (statusOfInterest)
 	{
 	case DISCOVERED:
-		distanceOfInterest = DISTANCE_DISCOVER;
+		if (usedSonar)
+			distanceOfInterest = DISTANCE_USE_SONAR;
+		else
+			distanceOfInterest = DISTANCE_DISCOVER;
 		break;
 	case INTERACTED:
 		distanceOfInterest = DISTANCE_INTERACT;
@@ -912,7 +902,7 @@ bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const in
 	//if it didn't match with anyone, it hasn't been picked up
 	return false;
 }
-
+*/
 //NOTE: incomplete
 bool StudentWorld::isLocationAffectedByGroup(const CoordType& x, const CoordType& y, Group g, const int& statusOfInterest) const
 {
@@ -987,6 +977,21 @@ bool StudentWorld::isLocationAffectedByGroup(const CoordType& x, const CoordType
 	return false;
 }
 
+
+void StudentWorld::letPlayerUseSonar()
+{
+	bool usedSonar = true;
+	for (int i = 0; i < m_actors.size(); i++)
+	{
+		Actor* p = m_actors[i];
+		if (p->getDepth() == DEPTH_GOODIE && isActorAffectedByGroup(p, player, DISCOVERED, usedSonar))
+		{
+			p->setVisibility(true);
+		}
+	}
+	playSound(SOUND_SONAR);
+	m_player->changeSonarBy(-1);
+}
 
 
 // Helper functions

@@ -64,9 +64,91 @@ public:
 	std::vector<Actor*>* getActors() { return &(m_actors); }
 	FrackMan* getPlayer() { return m_player; }
 
-	bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const int& statusOfInterest) const;
+	//bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const int& statusOfInterest, bool usedSonar) const;
+	//NOTE: incomplete
+	bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const int& statusOfInterest, bool usedSonar = false) const
+	{
+		double distanceOfInterest = -1;
+
+		switch (statusOfInterest)
+		{
+		case DISCOVERED:
+			if (usedSonar)
+				distanceOfInterest = DISTANCE_USE_SONAR;
+			else
+				distanceOfInterest = DISTANCE_DISCOVER;
+			break;
+		case INTERACTED:
+			distanceOfInterest = DISTANCE_INTERACT;
+			break;
+		case PLACED: //only on init
+			distanceOfInterest = DISTANCE_PLACEMENT;
+			break;
+		}
+
+
+		switch (g)
+		{
+		case player:
+			if (distanceBetweenActors(caller, m_player) <= distanceOfInterest)
+				return true;
+			break;
+		case enemies:
+			for (int i = 0; i < m_actors.size(); i++)
+			{
+				Actor* p = m_actors[i];
+				//filter condition
+				if (!(p->getID() == IID_PROTESTER || p->getID() == IID_HARD_CORE_PROTESTER))
+					continue;
+				if (distanceBetweenActors(caller, p) <= distanceOfInterest)
+					return true;
+			}
+			break;
+		case boulders:
+			for (int i = 0; i < m_actors.size(); i++)
+			{
+				Actor* p = m_actors[i];
+				//filter condition
+				if (!(p->getID() == IID_BOULDER))
+					continue;
+				if (distanceBetweenActors(caller, p) <= distanceOfInterest)
+					return true;
+			}
+			break;
+
+		case goodies:
+			for (int i = 0; i < m_actors.size(); i++)
+			{
+				Actor* p = m_actors[i];
+				//filter condition
+				if (!(p->getDepth() == DEPTH_GOODIE)) //conveniently, only Goodies are on Layer 2
+					continue;
+				if (distanceBetweenActors(caller, p) <= distanceOfInterest)
+					return true;
+			}
+			break;
+		case anyone:
+			if (distanceBetweenActors(caller, m_player) <= distanceOfInterest)
+				return true;
+			for (int i = 0; i < m_actors.size(); i++)
+			{
+				Actor* p = m_actors[i];
+				if (distanceBetweenActors(caller, p) <= distanceOfInterest)
+					return true;
+			}
+			break; //will fill in if it ends up being necessary...
+		}
+		//if it didn't match with anyone, it hasn't been picked up
+		return false;
+	}
+
+	
+	
+	
 	bool StudentWorld::isLocationAffectedByGroup(const CoordType& x, const CoordType& y, Group g, const int& statusOfInterest) const;
 
+
+	void letPlayerUseSonar();
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
 	bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir);
@@ -83,6 +165,9 @@ public:
 	bool StudentWorld::placeItemIntoGrid(Actor* a);
 	bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int& ID);
 
+
+	//for debugging
+	void StudentWorld::setAllActorsAsVisible();
 
 	bool isInvalidLocation(int x, int y) const { return (x < 0 || x > X_UPPER_BOUND || y < 0 || y > Y_UPPER_BOUND); }
 

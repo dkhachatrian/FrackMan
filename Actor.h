@@ -308,15 +308,18 @@ public:
 
 	int getSquirts() const { return m_squirts; }
 	void changeSquirtsBy(int x) { m_squirts += x; }
+	bool attemptToUseWaterGun();
 
 	int getGold() const { return m_gold; }
 	void changeGoldBy(int x) { m_gold += x; }
+	bool attemptToDropGold();
 
 	int getSonar() const { return m_sonar; }
 	void changeSonarBy(int x) { m_sonar += x; }
+	bool attemptToUseSonar();
 
 
-	virtual bool doSpecializedAction();
+	bool attemptToDig();
 	//bool removeDirt(const Direction dir, const int& x, const int& y);
 
 protected:
@@ -345,7 +348,7 @@ private:
 class StaticObject :public Actor
 {
 public:
-	StaticObject(int IID, unsigned int depth, StudentWorld* sw, CoordType x = -1, CoordType y = -1, double imageSize = NORMAL_IMAGE_SIZE, bool solidity = false) :
+	StaticObject(int IID, unsigned int depth, StudentWorld* sw, CoordType x, CoordType y, double imageSize = NORMAL_IMAGE_SIZE, bool solidity = false) :
 		Actor(IID, depth, sw, imageSize, x, y)
 	{
 
@@ -361,6 +364,8 @@ enum Group {player, enemies, boulders, goodies, anyone};
 const double DISTANCE_INTERACT = 3;
 const double DISTANCE_DISCOVER = 4;
 const double DISTANCE_PLACEMENT = 6;
+const double DISTANCE_USE_SONAR = 12;
+
 
 const int SCORE_INVALID = -1;
 const int SCORE_SONAR = 75;
@@ -373,7 +378,7 @@ class Goodie :public StaticObject
 {
 public:
 	Goodie(int IID,  StudentWorld* sw, CoordType x, CoordType y, int score = SCORE_INVALID, unsigned int depth = DEPTH_GOODIE, Group canPickMeUp = player) :
-		StaticObject(IID, depth, sw)
+		StaticObject(IID, depth, sw, x, y)
 	{
 		setVisibility(false);
 		//setVisible(false); //most start off invisible

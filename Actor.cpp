@@ -204,6 +204,20 @@ int FrackMan::doSomething()
 		case KEY_PRESS_UP:
 			result = attemptMove(up);
 			break;
+		case KEY_PRESS_ESCAPE:
+			die();
+			break;
+		case KEY_PRESS_SPACE:
+			
+			break;
+		case KEY_PRESS_TAB:
+
+			break;
+		case 'z':
+		case 'Z':
+			attemptToUseSonar();
+			break;
+
 		}
 	}
 
@@ -215,7 +229,7 @@ bool FrackMan::attemptMove(const Direction dir)
 	bool result = DynamicObject::attemptMove(dir);
 	//only digs if he moved
 	if(result)
-		doSpecializedAction();
+		attemptToDig();
 
 
 	return result;
@@ -224,7 +238,7 @@ bool FrackMan::attemptMove(const Direction dir)
 
 //FrackMan's specialized action are many, depending on what key is pressed.
 //	but at the moment, only thing implemented is for movement (i.e. removing dirt in front of it)
-bool FrackMan::doSpecializedAction()
+bool FrackMan::attemptToDig()
 {
 	int x_n = getX();
 	int y_n = getY();
@@ -243,6 +257,13 @@ bool FrackMan::doSpecializedAction()
 }
 
 
+bool FrackMan::attemptToUseSonar()
+{
+	if (m_sonar == 0)
+		return false;
+
+	getWorld()->letPlayerUseSonar();
+}
 
 
 
