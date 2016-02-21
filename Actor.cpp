@@ -172,7 +172,12 @@ bool DynamicObject::attemptMove(const Direction dir)
 	return (getWorld()->tryToMoveMe(this, dir));
 }
 
+
+
+
 // FrackMan functions
+
+
 
 int FrackMan::doSomething()
 {
@@ -236,6 +241,78 @@ bool FrackMan::doSpecializedAction()
 }
 
 
+
+
+
+
+// Boulder functions
+
+Boulder::Boulder(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_BOULDER, unsigned int depth = DEPTH_BOULDER) :
+	DynamicObject(IID, depth, sw, x, y)
+{
+	moveTo(x, y);
+
+	m_state = stable;
+	m_haveWaited = false;
+	setDirection(down);
+	setVisibility(true);
+	setSolidityAs(true);
+}
+
+int Boulder::doSomething()
+{
+	if (isDead())
+		return DEAD;
+
+	switch (m_state)
+	{
+		//progression of states is only stable -> waiting -> falling (-> death)
+	case stable:
+		if (!isThereDirtBelowMe())
+		{
+			m_state = waiting;
+			m_haveWaited = true;
+			setTickNumber(30);
+		}
+		return STATIONARY;
+		break; //not necessary
+	case waiting:
+		countDownATick();
+		if (getTickNumber() == 0)
+		{
+			m_state = falling;
+			getWorld()->playSound(SOUND_FALLING_ROCK);
+		}
+		return STATIONARY;
+		break; //not necessary
+	case falling:
+		bool couldMove = attemptMove(down);
+		if (!couldMove) //hit the bottom of the stage or some dirt
+		{
+			die();
+			return DEAD;
+		}
+		if(getWorld()->isActorAffectedByGroup(this, player, INTERACTED))
+		{
+			getWorld()->getPlayer()->die();
+			return MOVED; //this will finish the round
+		}
+		if (getWorld()->isActorAffectedByGroup(this, enemies, INTERACTED))
+		{
+			//make them annoyed by 100 points
+		}
+		return MOVED;
+	}
+
+
+}
+
+
+
+
+
+
+
 // Goodie functions
 
 
@@ -250,27 +327,26 @@ int Goodie::doSomething()
 
 	if (doITick())
 	{
-		m_ticksLeft--;
+		countDownATick();
 
-		if (m_ticksLeft == 0)
+		if (getTickNumber() == 0)
 		{
 			die();
 			return DEAD;
 		}
 	}
 
-	if (getWorld()->isGoodieCollected(this, whoCanPickMeUp()))
+	if (getWorld()->isActorAffectedByGroup(this, whoCanPickMeUp(), INTERACTED))
 	{
 		//getWorld()->playSound(SOUND_GOT_GOODIE);
 		getWorld()->increaseScore(giveScore());
 		die();
-		return COLLECTED;
+		return INTERACTED;
 	}
 
-	if (!isVisible() && (getWorld()->distanceBetweenActors(getWorld()->getPlayer(), this) <= DISTANCE_DISCOVER))
+	if (!isVisible() && (getWorld()->isActorAffectedByGroup(this, whoCanPickMeUp(), DISCOVERED)))
 	{
-		setVisible(true);
-		setVisibleFlag(true);
+		setVisibility(true);
 		return DISCOVERED;
 	}
 
@@ -290,16 +366,15 @@ int Goodie::doSomething()
 
 // Sonar Functions
 
-Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_SONAR, int IID = IID_SONAR, Group canPickMeUp = player):
-	Goodie(IID, score, sw)
+Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_SONAR, int IID = IID_SONAR):
+	Goodie(IID, sw, x, y, score)
 {
 	moveTo(x, y);
 	setDirection(right);
 	setVisible(true);
 	setVisibleFlag(true);
 	//setPickUpGroup(player);
-
-	m_ticksLeft = max(100, 10 * getWorld()->getLevel()); //it doesn't see the function in StudentWorld.h?
+	setTickNumber(max(100, 10 * getWorld()->getLevel())); //it doesn't see the function in StudentWorld.h?
 }
 
 
@@ -313,7 +388,7 @@ int Sonar::doSomething()
 
 	switch (result)
 	{
-	case COLLECTED:
+	case INTERACTED:
 		getWorld()->playSound(SOUND_GOT_GOODIE);
 		getWorld()->getPlayer()->changeSonarBy(1);
 		break;
@@ -331,9 +406,11 @@ int Sonar::doSomething()
 // Barrel functions
 
 Barrel::Barrel(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_BARREL, int IID = IID_BARREL) :
-	Goodie(IID, score, sw, x, y)
+	Goodie(IID, sw, x, y, score)
 {
-	setVisible(false);
+	moveTo(x, y);
+	setVisibility(false);
+	//setVisible(true);
 	setDirection(right);
 }
 
@@ -347,7 +424,7 @@ int Barrel::doSomething()
 
 	switch (result)
 	{
-	case COLLECTED:
+	case INTERACTED:
 		getWorld()->playSound(SOUND_FOUND_OIL);
 		getWorld()->changeBarrelsLeftBy(-1);
 		break;
@@ -360,9 +437,10 @@ int Barrel::doSomething()
 
 // Gold functions
 
-Gold::Gold(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_GOLD, int IID = IID_GOLD) :
-	Goodie(IID, score, sw, x, y)
+Gold::Gold(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_GOLD_FRACKMAN, int IID = IID_GOLD) :
+	Goodie(IID, sw, x, y)
 {
+	moveTo(x, y);
 	setDirection(right);
 
 	//determine visibility and type of gold
@@ -371,23 +449,23 @@ Gold::Gold(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_GOLD, 
 	{
 		m_frack = true;
 		setTickStatus(true);
-		setVisible(true);
-		setVisibleFlag(true);
+		//setTickNumber()
+		setVisibility(true);
 		setPickUpGroup(enemies);
+		setScore(SCORE_GOLD_PROTESTER);
 	}
 	else
 	{
 		m_frack = false;
 		setTickStatus(false);
-		setVisible(false);
-		setVisibleFlag(false);
+		setVisibility(false);
 		setPickUpGroup(player);
+		setScore(SCORE_GOLD_FRACKMAN);
 	}
-
 
 }
 
-// NOT FINISHED. Need to implement/design Protester classes
+// NOT FINISHED. Return after implementing/designing Protester classes
 int Gold::doSomething()
 {
 	int result = Goodie::doSomething();
@@ -397,7 +475,7 @@ int Gold::doSomething()
 
 	switch (result)
 	{
-	case COLLECTED:
+	case INTERACTED:
 		if (!wasDroppedByFrackMan())
 		{
 			getWorld()->playSound(SOUND_GOT_GOODIE);
@@ -405,8 +483,44 @@ int Gold::doSomething()
 		}
 		else
 		{
+			getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
 			//tell the protestor he got bribed
 		}
 		break;
 	}
+}
+
+
+
+
+// Water functions
+
+Water::Water(CoordType x, CoordType y, StudentWorld* sw, int score = SCORE_WATER_POOL, int IID = IID_WATER_POOL) :
+	Goodie(IID, sw, x, y, SCORE_WATER_POOL)
+{
+	moveTo(x, y);
+	setDirection(right);
+	setVisibility(true);
+	setTickStatus(true);
+	setTickNumber(max(100, 300 - (10 * getWorld()->getLevel())));
+}
+
+int Water::doSomething()
+{
+	int result = Goodie::doSomething(); //does most of the stuff,
+										//including making a sound or killing the Goodie or becoming visible if appropriate
+
+	if (result == DEAD)
+		return DEAD;
+
+	switch (result)
+	{
+	case INTERACTED:
+		getWorld()->playSound(SOUND_GOT_GOODIE);
+		getWorld()->getPlayer()->changeSquirtsBy(5);
+		break;
+	}
+
+	return result;
+
 }

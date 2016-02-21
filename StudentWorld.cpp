@@ -75,6 +75,13 @@ int StudentWorld::init()
 
 	CoordType x, y;
 	
+	m_player->moveTo(PLAYER_START_X, PLAYER_START_Y); //just in case ...
+
+	//parameters for the level
+	m_bouldersLeft = min(getLevel() / 2 + 2, 6);
+	m_goldLeft = max(5 - getLevel() / 2, 2);
+	m_barrelsLeft = min(2 + getLevel(), 20);
+	
 	//place boulders
 	int i = 0;
 	while (i < m_bouldersLeft)
@@ -83,8 +90,9 @@ int StudentWorld::init()
 
 		if(foundSpot)
 		{ 
-			Boulder* p = new Boulder(x, y, this);
+			Boulder* p = new Boulder(x, y, this, IID_BOULDER, DEPTH_BOULDER);
 			removeDirtForActor(p);
+			m_actors.push_back(p); //keep track of the Actors
 			i++;
 		}
 		else exit(3); //bad...
@@ -92,50 +100,79 @@ int StudentWorld::init()
 	}
 
 	//then gold
-	int i = 0;
-	while (i < m_bouldersLeft)
+	i = 0;
+	while (i < m_goldLeft)
 	{
 		bool foundSpot = generateAppropriatePossibleLocation(x, y, IID_GOLD);
 
 		if (foundSpot)
 		{
-			Gold* p = new Gold(x, y, this);
+			Gold* p = new Gold(x, y, this, SCORE_GOLD_FRACKMAN, IID_GOLD);
+			m_actors.push_back(p); //keep track of the Actors
 			i++;
 		}
 		else exit(3); //bad...
 					  //otherwise it tries again
 	}
 	//then barrels
-	for (int i = 0; i < m_barrelsLeft; i++)
+	i = 0;
+	while (i < m_barrelsLeft)
 	{
-		Barrel* p = new Barrel(this);
-		bool wasPlaced = placeItemIntoGrid(p);
+		bool foundSpot = generateAppropriatePossibleLocation(x, y, IID_BARREL);
 
-		if (!wasPlaced)
+		if (foundSpot)
 		{
-			delete p; //worrisome...
+			Barrel* p = new Barrel(x, y, this, SCORE_BARREL, IID_BARREL);
+			m_actors.push_back(p); //keep track of the Actors
+			i++;
 		}
+		else exit(3); //bad...
+					  //otherwise it tries again
 	}
-
+	
 	//setUpDirt();
-	m_player->moveTo(PLAYER_START_X, PLAYER_START_Y); //just in case ...
 
-	m_bouldersLeft = min(getLevel() / 2 + 2, 6);
-	m_goldLeft = max(5 - getLevel() / 2, 2);
-	m_barrelsLeft = min(2 + getLevel(), 20);
 
-	return 0; //change later
+	return 1; //change later
 }
 
 int StudentWorld::move()
 {
-	setDisplayText();
+	// Update the Game Status Line
+	setDisplayText();// update the score/lives/level text at screen top
+										   // The term “Actors” refers to all Protesters, the player, Goodies,
+										   // Boulders, Barrels of oil, Holes, Squirts, the Exit, etc.
+										   // Give each Actor a chance to do something
 	m_player->doSomething();
+	for (int i = 0; i < m_actors.size(); i++)
+	{
+		Actor* p = m_actors[i];
+		if(!p->isDead())
+		{
+			// ask each actor to do something (e.g. move)
+			p->doSomething();
+		}
+	}
+
+	removeDeadActors();
+
+	if (m_player->isDead())
+		return GWSTATUS_PLAYER_DIED;
+	// If the player has collected all of the Barrels on the level, then
+	// return the result that the player finished the level
+	if (m_barrelsLeft == 0)
+	{
+		playSound(SOUND_FINISHED_LEVEL);
+		return GWSTATUS_FINISHED_LEVEL;
+	}
+
+	// the player hasn’t completed the current level and hasn’t died
+	// let them continue playing the current level
 	return GWSTATUS_CONTINUE_GAME;
 
 	/*
 	// Update the Game Status Line
-	updateDisplayText(); // update the score/lives/level text at screen top
+	setDisplayText();updateDisplayText(); // update the score/lives/level text at screen top
 						 // The term “Actors” refers to all Protesters, the player, Goodies,
 						 // Boulders, Barrels of oil, Holes, Squirts, the Exit, etc.
 						 // Give each Actor a chance to do something
@@ -188,6 +225,24 @@ StudentWorld::~StudentWorld()
 {
 	cleanUpDirt();
 	cleanUpActorsAndFrackMan();
+}
+
+void StudentWorld::removeDeadActors()
+{
+	std::vector<Actor*>::iterator it = m_actors.begin();
+
+	while (it != m_actors.end())
+	{
+		Actor* p = (*it);
+		if (p->isDead())
+		{
+			delete p; //free memory
+			it = m_actors.erase(it); //move to the next one
+		}
+		else it++; //otherwise keep checking
+	}
+
+	return;
 }
 
 
@@ -308,7 +363,7 @@ bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int
 
 			//has to not be in the oil shaft/mining surface, i.e., where there's no dirt
 			if (m_dirts[i][j] == nullptr) //if there's no dirt there
-				continue; //re-rool
+				continue; //re-roll
 
 			//make sure there is Dirt under the sprite
 			for (int k = 0; k < SPRITE_WIDTH; k++)
@@ -347,7 +402,7 @@ bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int
 	//if going randomly didn't work, brute-force it by checking every possible tile
 	//TODO: implement brute-force method in case it's necessary
 
-	return (!(numAttempts == MAX_ATTEMPTS)); //if it didn't reach the max number of attempts, a spot was found
+	return (numAttempts != MAX_ATTEMPTS); //if it didn't reach the max number of attempts, a spot was found
 }
 
 
@@ -736,13 +791,28 @@ double StudentWorld::distanceBetweenActors(const Actor* a, const Actor* b) const
 }
 
 //NOTE: incomplete
-bool StudentWorld::isGoodieCollected(const Actor* caller, Group g) const
+bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const int& statusOfInterest) const
 {
+	double distanceOfInterest = -1;
+
+	switch (statusOfInterest)
+	{
+	case DISCOVERED:
+		distanceOfInterest = DISTANCE_DISCOVER;
+		break;
+	case INTERACTED:
+		distanceOfInterest = DISTANCE_INTERACT;
+		break;
+	case PLACED: //only on init
+		distanceOfInterest = DISTANCE_PLACEMENT;
+		break;
+	}
+
 
 	switch(g)
 	{
 	case player:
-		if (distanceBetweenActors(caller, m_player) <= DISTANCE_COLLECT)
+		if (distanceBetweenActors(caller, m_player) <= distanceOfInterest)
 			return true;
 		break;
 	case enemies:
@@ -751,11 +821,19 @@ bool StudentWorld::isGoodieCollected(const Actor* caller, Group g) const
 			Actor* p = m_actors[i];
 			if (!(p->getID() == IID_PROTESTER || p->getID() == IID_HARD_CORE_PROTESTER))
 				break;
-			if (distanceBetweenActors(caller, p) <= DISTANCE_COLLECT)
+			if (distanceBetweenActors(caller, p) <= distanceOfInterest)
 				return true;
 		}
 		break;
 	case anyone:
+		if (distanceBetweenActors(caller, m_player) <= distanceOfInterest)
+			return true;
+		for (int i = 0; i < m_actors.size(); i++)
+		{
+			Actor* p = m_actors[i];
+			if (distanceBetweenActors(caller, p) <= distanceOfInterest)
+				return true;
+		}
 		break; //will fill in if it ends up being necessary...
 	}
 	//if it didn't match with anyone, it hasn't been picked up

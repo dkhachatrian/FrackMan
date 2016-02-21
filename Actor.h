@@ -59,10 +59,12 @@ const unsigned int DEPTH_DIRT = 3;
 //doSomething() return values
 const int DEAD = -1;
 const int MOVED = 0;
-const int COLLECTED = 1;
+const int INTERACTED = 1;
 const int STATIONARY = 2;
 const int ANNOYED = 3;
 const int DISCOVERED = 4;
+const int PLACED = 5;
+
 
 
 class Actor :public GraphObject
@@ -81,15 +83,24 @@ public:
 	Actor( int IID,  unsigned int depth, StudentWorld* sw, double imageSize, CoordType x = -1, CoordType y = -1, bool solidity = false):
 		GraphObject(IID, x, y, right, imageSize, depth)
 	{
+		moveTo(x, y);
 		m_sw = sw;
-		setVisible(true); //by default
+		m_doITick = false; //most things don't think
+		m_ticksLeft = -1;
 		m_is_solid = solidity; //everything except Boulders is not solid
 		m_width = imageSize * SPRITE_WIDTH;
 		m_height = imageSize * SPRITE_HEIGHT;
-		m_visible = true; //by default
-
+		setVisibility(true);
+		m_isDead = false;
+		//m_visible = true; //by default
+		//setVisible(true); //by default
 	}
 
+	inline void setVisibility(bool x)
+	{
+		setVisible(x);
+		setVisibleFlag(x);
+	}
 
 	virtual ~Actor() { setVisible(false); }
 
@@ -130,12 +141,23 @@ public:
 
 	Corner relativeLocationTo(const Actor* other) const;
 
-protected:
-	void setIdentityAs(int id) {m_id = id;}
+	virtual bool shouldITick() const { return false; } //most things don't tick
 
 	void die() { m_isDead = true; }
 
+
+protected:
+	void setIdentityAs(int id) {m_id = id;}
+
 	//helper functions
+
+	//ticking
+	void countDownATick() { m_ticksLeft--; }
+	bool doITick() const { return m_doITick; }
+	void setTickStatus(bool x) { m_doITick = x; }
+	void setTickNumber(int x) { m_ticksLeft = x; }
+	int getTickNumber() const { return m_ticksLeft; }
+
 
 	void setVisibleFlag(bool x) { m_visible = x; }
 	void setSolidityAs(bool state) { m_is_solid = state; }
@@ -148,6 +170,8 @@ private:
 	CoordType m_height;
 	bool m_isDead;
 	bool m_visible;
+	int m_ticksLeft;
+	bool m_doITick;
 	//GraphObject m_go;
 
 };
@@ -166,13 +190,13 @@ public:
 	Dirt(StudentWorld* sw) :Actor(IID_DIRT, DEPTH_DIRT, sw, DIRT_IMAGE_SIZE)
 	{
 		setDirection(right);
-		setVisible(true);
+		setVisibility(true);
 		setIdentityAs(IID_DIRT);
 	};
 
 	virtual ~Dirt()
 	{
-		setVisible(false);
+		//setVisible(false);
 	};
 
 	virtual int doSomething()
@@ -188,7 +212,8 @@ private:
 class DynamicObject :public Actor
 {
 public:
-	DynamicObject(int IID, unsigned int depth, StudentWorld* sw, double imageSize = NORMAL_IMAGE_SIZE) :Actor(IID, depth, sw, imageSize)
+	DynamicObject(int IID, unsigned int depth, StudentWorld* sw, CoordType x = -1, CoordType y = -1, double imageSize = NORMAL_IMAGE_SIZE):
+		Actor(IID, depth, sw, imageSize, x, y)
 	{};
 
 	virtual ~DynamicObject()
@@ -224,19 +249,19 @@ public:
 class AnnoyableActor :public DynamicObject
 {
 public:
-	AnnoyableActor(int IID, unsigned int depth, StudentWorld* sw, double imageSize = NORMAL_IMAGE_SIZE) :
-		DynamicObject(IID, depth, sw, imageSize)
+	AnnoyableActor(int IID, unsigned int depth, StudentWorld* sw, CoordType x = -1, CoordType y = -1, double imageSize = NORMAL_IMAGE_SIZE) :
+		DynamicObject(IID, depth, sw, x, y, imageSize)
 	{
 		m_annoyed = false;
 	}
 
 
 	virtual bool isAnnoyed() const { return m_annoyed; }
-	virtual bool shouldIBeAnnoyed() const = 0;
-	//virtual int attemptAnnoyedAction() = 0;
+	virtual void setAnnoyed(bool x) { m_annoyed = x; };
+	//virtual bool shouldIBeAnnoyed() const = 0;
+	virtual int attemptAnnoyedAction() = 0;
 
 protected:
-	virtual void setAnnoyed(bool x) { m_annoyed = x; };
 private:
 	bool m_annoyed;
 };
@@ -267,7 +292,6 @@ public:
 	virtual bool shouldIBeAnnoyed() const { return false; }
 
 	int getHealth() const { return m_hp; }
-	bool isDead() const { return m_hp <= 0; }
 	void changeHealthBy(int x) { m_hp += x; }
 
 	int getSquirts() const { return m_squirts; }
@@ -294,7 +318,7 @@ private:
 };
 
 
-class Protestor :public Actor
+class Protester :public Actor
 {
 public:
 
@@ -309,8 +333,8 @@ private:
 class StaticObject :public Actor
 {
 public:
-	StaticObject(int IID, unsigned int depth, StudentWorld* sw, double imageSize = NORMAL_IMAGE_SIZE, bool solidity = false) :
-		Actor(IID, depth, sw, imageSize)
+	StaticObject(int IID, unsigned int depth, StudentWorld* sw, CoordType x = -1, CoordType y = -1, double imageSize = NORMAL_IMAGE_SIZE, bool solidity = false) :
+		Actor(IID, depth, sw, imageSize, x, y)
 	{
 
 	}
@@ -322,24 +346,29 @@ public:
 
 enum Group {player, enemies, anyone};
 //from spec (double-check though!)
-const double DISTANCE_COLLECT = 3;
+const double DISTANCE_INTERACT = 3;
 const double DISTANCE_DISCOVER = 4;
 const double DISTANCE_PLACEMENT = 6;
 
+const int SCORE_INVALID = -1;
 const int SCORE_SONAR = 75;
 const int SCORE_BARREL = 1000;
-const int SCORE_GOLD = 10;
+const int SCORE_GOLD_FRACKMAN = 10;
+const int SCORE_GOLD_PROTESTER = 25;
+const int SCORE_WATER_POOL = 100;
 
 class Goodie :public StaticObject
 {
 public:
-	Goodie(int IID, int score,  StudentWorld* sw, CoordType x, CoordType y, unsigned int depth = DEPTH_GOODIE, Group canPickMeUp = player) :
+	Goodie(int IID,  StudentWorld* sw, CoordType x, CoordType y, int score = SCORE_INVALID, unsigned int depth = DEPTH_GOODIE, Group canPickMeUp = player) :
 		StaticObject(IID, depth, sw)
 	{
-		setVisible(false); //most start off invisible
-		setVisibleFlag(false);
+		setVisibility(false);
+		//setVisible(false); //most start off invisible
+		//setVisibleFlag(false);
 		m_score = score;
 		m_whoCanPickMeUp = player;
+		//m_doITick = false; //most don't tick
 	}
 	virtual ~Goodie() {};
 
@@ -349,26 +378,21 @@ public:
 	int giveScore() const { return m_score; }
 	Group whoCanPickMeUp() const { return m_whoCanPickMeUp; }
 
-	bool shouldITick() { return false; } //most Goodies don't tick (?)
+	//virtual bool shouldITick() const { return m_doITick; } 
 
 
 protected:
 	void setScore(int score) { m_score = score; }
-	void countDownATick() { m_ticksLeft--; }
-	bool doITick() const { return m_doITick; }
-	void setTickStatus(bool x) { m_doITick = x; }
 	void setPickUpGroup(Group g) { m_whoCanPickMeUp = g; }
 private:
 	int m_score;
-	int m_ticksLeft;
-	bool m_doITick;
 	Group m_whoCanPickMeUp;
 };
 
 class Sonar : public Goodie
 {
 public:
-	Sonar(CoordType x, CoordType y, StudentWorld* sw, int score, int IID, Group canPickMeUp);
+	Sonar(CoordType x, CoordType y, StudentWorld* sw, int score, int IID);
 	virtual ~Sonar() {};
 
 	virtual int doSomething();
@@ -416,23 +440,17 @@ const int WAIT_TIME_BOULDER = 30;
 class Boulder : public DynamicObject
 {
 public:
-	Boulder(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_BOULDER, unsigned int depth = DEPTH_BOULDER) :
-		DynamicObject(IID, depth, sw)
-	{
-		moveTo(x, y);
-		m_state = stable;
-		setDirection(down);
-		setVisible(true); //just to be safe...
-		m_ticksLeft = WAIT_TIME_BOULDER;
-	}
+	Boulder(CoordType x, CoordType y, StudentWorld* sw, int IID, unsigned int depth);
+
 	virtual ~Boulder() {};
-	virtual int doSomething() {};
+	virtual int doSomething();
 
 	state checkState() const { return m_state; }
 
 private:
 	state m_state;
 	int m_ticksLeft;
+	bool m_haveWaited;
 };
 
 

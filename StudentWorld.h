@@ -50,6 +50,7 @@ public:
 	}
 	*/
 
+	void StudentWorld::removeDeadActors();
 
 	//the bread and butter
 	virtual int init();
@@ -63,7 +64,7 @@ public:
 	std::vector<Actor*>* getActors() { return &(m_actors); }
 	FrackMan* getPlayer() { return m_player; }
 
-	bool StudentWorld::isGoodieCollected(const Actor* caller, Group g) const;
+	bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const int& statusOfInterest) const;
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
 	bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir);
@@ -72,7 +73,7 @@ public:
 
 	Dirt*** getDirts() { return m_dirts; }
 
-	void changeBarrelsLeftBy(int x) { m_barrelsLeft -= x; }
+	void changeBarrelsLeftBy(int x) { m_barrelsLeft += x; }
 
 	bool isThereDirtAt(int x, int y) { return (m_dirts[x][y] != nullptr); }
 
