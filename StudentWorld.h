@@ -56,12 +56,13 @@ public:
 	virtual int move();
 	virtual void cleanUp();
 
-	bool cleanUpActorsAndFrackMan();
 
-	bool removeDirt(const GraphObject::Direction dir, const CoordType& x, const CoordType& y);
+	bool removeDirtForFrackMan(const GraphObject::Direction dir, const CoordType& x, const CoordType& y);
+
+	void removeDirtFromLocation(const CoordType& x, const CoordType& y);
 
 	std::vector<Actor*>* getActors() { return &(m_actors); }
-	Actor* getPlayer() { return m_player; }
+	FrackMan* getPlayer() { return m_player; }
 
 	bool StudentWorld::isGoodieCollected(const Actor* caller, Group g) const;
 
@@ -75,6 +76,7 @@ public:
 
 	bool isThereDirtAt(int x, int y) { return (m_dirts[x][y] != nullptr); }
 
+	
 
 	bool isInvalidLocation(int x, int y) const { return (x < 0 || x >= VIEW_WIDTH || y < 0 || y >= VIEW_HEIGHT); }
 
@@ -86,9 +88,15 @@ private:
 	//std::string prependCharToStringToSize(std::string s, char c, int size);
 
 
+	bool StudentWorld::placeItemIntoGrid(Actor* a);
+	bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int& ID);
+
+
+
 	void setUpDirt();
 	void cleanUpDirt();
 	void initDirt();
+	bool cleanUpActorsAndFrackMan();
 
 
 	//keep track of how many of these items are left in the level

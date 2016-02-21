@@ -53,6 +53,15 @@ const unsigned int DEPTH_DIRT = 3;
 //const string DIRT_ID = "dirt";
 
 
+
+//doSomething() return values
+const int DEAD = -1;
+const int MOVED = 0;
+const int COLLECTED = 1;
+const int STATIONARY = 2;
+const int ANNOYED = 3;
+
+
 class Actor :public GraphObject
 {
 public:
@@ -66,7 +75,7 @@ public:
 		m_height = imageSize * SPRITE_HEIGHT;
 	}
 	*/
-	Actor(CoordType x, CoordType y, int IID,  unsigned int depth, StudentWorld* sw, double imageSize, bool solidity = false):
+	Actor( int IID,  unsigned int depth, StudentWorld* sw, double imageSize, CoordType x = -1, CoordType y = -1, bool solidity = false):
 		GraphObject(IID, x, y, right, imageSize, depth)
 	{
 		m_sw = sw;
@@ -82,6 +91,7 @@ public:
 
 	//doSomething()
 	virtual int doSomething() = 0;
+	//virtual int doSomething();
 	
 	//gives bottom-left corner (i.e. what's returned by getX/Y)
 	void sendLocation(CoordType& x, CoordType& y) const
@@ -145,7 +155,7 @@ public:
 	//};
 	//Actor(CoordType x, CoordType y, int IID, Direction dir, unsigned int depth, StudentWorld* sw, double imageSize, bool solidity = false) :
 
-	Dirt(CoordType x, CoordType y, StudentWorld* sw) :Actor(x, y, IID_DIRT, DEPTH_DIRT, sw, DIRT_IMAGE_SIZE)
+	Dirt(StudentWorld* sw) :Actor(IID_DIRT, DEPTH_DIRT, sw, DIRT_IMAGE_SIZE)
 	{
 		setDirection(right);
 		setVisible(true);
@@ -159,7 +169,7 @@ public:
 
 	virtual int doSomething()
 	{
-		return return; //do nothing (how boring!)
+		return; //do nothing (how boring!)
 	};
 
 
@@ -170,7 +180,7 @@ private:
 class DynamicObject :public Actor
 {
 public:
-	DynamicObject(int x, int y, int IID, unsigned int depth, StudentWorld* sw, double imageSize = NORMAL_IMAGE_SIZE) :Actor(x, y, IID, depth, sw, imageSize)
+	DynamicObject(int IID, unsigned int depth, StudentWorld* sw, double imageSize = NORMAL_IMAGE_SIZE) :Actor(IID, depth, sw, imageSize)
 	{};
 
 	virtual ~DynamicObject()
@@ -206,13 +216,19 @@ public:
 class AnnoyableActor :public DynamicObject
 {
 public:
+	AnnoyableActor(int IID, unsigned int depth, StudentWorld* sw, double imageSize = NORMAL_IMAGE_SIZE) :
+		DynamicObject(IID, depth, sw, imageSize)
+	{
+		m_annoyed = false;
+	}
 
 
-	virtual bool isAnnoyed() { return m_annoyed; }
+	virtual bool isAnnoyed() const { return m_annoyed; }
+	virtual bool shouldIBeAnnoyed() const = 0;
 	//virtual int attemptAnnoyedAction() = 0;
 
 protected:
-	virtual void setAnnoyed() = 0;
+	virtual void setAnnoyed(bool x) = { m_annoyed = x; };
 private:
 	bool m_annoyed;
 };
@@ -223,13 +239,14 @@ private:
 class FrackMan :public AnnoyableActor
 {
 public:
-	FrackMan(StudentWorld* sw):AnnoyableActor(PLAYER_START_X, PLAYER_START_Y, IID_PLAYER, DEPTH_PLAYER, sw)
+	FrackMan(StudentWorld* sw):AnnoyableActor(IID_PLAYER, DEPTH_PLAYER, sw)
 	{
 		m_hp = PLAYER_START_HEALTH;
 		m_squirts = PLAYER_START_SQUIRTS;
 		m_gold = 0;
 		m_sonar = 1;
 		setIdentityAs(IID_PLAYER);
+		setDirection(right);
 	};
 
 	virtual int doSomething();
@@ -239,6 +256,7 @@ public:
 	//for the purposes of compiling...
 	virtual bool isAnnoyed() { return false; }
 	virtual int attemptAnnoyedAction() { return 0; }
+	virtual bool shouldIBeAnnoyed() const { return false; }
 
 	int getHealth() const { return m_hp; }
 	bool isDead() const { return m_hp <= 0; }
@@ -283,8 +301,8 @@ private:
 class StaticObject :public Actor
 {
 public:
-	StaticObject(CoordType x, CoordType y, int IID, unsigned int depth, StudentWorld* sw, double imageSize = NORMAL_IMAGE_SIZE, bool solidity = false) :
-		Actor(x, y, IID, depth, sw, imageSize)
+	StaticObject(int IID, unsigned int depth, StudentWorld* sw, double imageSize = NORMAL_IMAGE_SIZE, bool solidity = false) :
+		Actor(IID, depth, sw, imageSize)
 	{
 
 	}
@@ -298,23 +316,24 @@ enum Group {player, enemies, anyone};
 //from spec (double-check though!)
 const double DISTANCE_COLLECT = 3;
 const double DISTANCE_DISCOVER = 4;
+const double DISTANCE_PLACEMENT = 6;
+
+const int SCORE_SONAR = 75;
+
 
 class Goodie :public StaticObject
 {
 public:
-	Goodie(CoordType x, CoordType y, int IID, unsigned int depth, StudentWorld* sw) :
+	Goodie(int IID, int score, unsigned int depth, StudentWorld* sw, Group canPickMeUp = player, CoordType x = -1, CoordType y = -1) :
 		StaticObject(x, y, IID, depth, sw)
 	{
 		setVisible(false); //most start off invisible
-		m_score = 0;
+		m_score = score;
 		m_whoCanPickMeUp = player;
 	}
 	virtual ~Goodie() {};
 
-	virtual int doSomething()
-	{
-		//getWorld()->distance
-	}
+	virtual int doSomething();
 
 	//picking up Goodies gives a score...
 	int giveScore() const { return m_score; }
@@ -331,22 +350,12 @@ private:
 class Sonar : public Goodie
 {
 public:
-	Sonar(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_SONAR, unsigned int depth = DEPTH_SONAR);
+	Sonar(CoordType x, CoordType y, StudentWorld* sw, int score, int IID, unsigned int depth, Group canPickMeUp);
 	virtual ~Sonar() {};
 
-	virtual int doSomething()
-	{
-		if (isDead())
-			return;
-		m_ticksLeft--;
-		if (m_ticksLeft == 0)
-		{
-			die();
-			return;
-		}
+	virtual int doSomething();
 
-	}
-
+	bool ranOutOfTicks() const { return (m_ticksLeft <= 0); }
 private:
 	int m_ticksLeft;
 

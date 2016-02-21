@@ -1,8 +1,18 @@
 #include "Actor.h"
 #include "StudentWorld.h"
 
+
 //int max(int x, int y);
 // Actor functions
+
+
+
+//int Actor::doSomething()
+//{
+//	if (isDead())
+//		return -1;
+//}
+
 
 
 //Gives "effective" (x,y) based on sprite size and current direction
@@ -211,7 +221,7 @@ bool FrackMan::doSpecializedAction()
 
 	sendEffectiveLocation(x_n, y_n, dir);
 
-	bool removedDirt = getWorld()->removeDirt(dir, x_n, y_n);
+	bool removedDirt = getWorld()->removeDirtForFrackMan(dir, x_n, y_n);
 
 	if (removedDirt) //means dirt was removed
 	{
@@ -222,21 +232,69 @@ bool FrackMan::doSpecializedAction()
 }
 
 
+// Goodie functions
+
+int Goodie::doSomething()
+{
+	if (isDead())
+	{
+		//die();
+		return DEAD;
+	}
+
+	if (getWorld()->isGoodieCollected(this, whoCanPickMeUp()))
+	{
+		getWorld()->playSound(SOUND_GOT_GOODIE);
+		getWorld()->increaseScore(giveScore());
+		die();
+		return COLLECTED;
+	}
+}
+
+
+
 
 
 // Sonar Functions
 
-Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw, int IID = IID_SONAR, unsigned int depth = DEPTH_SONAR):
-	Goodie(x, y, IID, depth, sw)
+Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_SONAR, int IID = IID_SONAR, unsigned int depth = DEPTH_SONAR, Group canPickMeUp = player):
+	Goodie(IID, score, depth, sw)
 {
+	moveTo(x, y);
 	setDirection(right);
 	setVisible(true);
-	setPickUpGroup(player);
+	//setPickUpGroup(player);
 
 	m_ticksLeft = max(100, 10 * getWorld()->getLevel()); //it doesn't see the function in StudentWorld.h?
 }
 
 
+int Sonar::doSomething()
+{
+	int result = Goodie::doSomething(); //does most of the stuff, including making a sound or killing the Goodie if appropriate
+
+	if (result == DEAD)
+		return DEAD;
+
+	m_ticksLeft--; //counting down its time in the World
+
+	switch (result)
+	{
+	//case DEAD:
+	case STATIONARY:
+		if (ranOutOfTicks())
+		{
+			die();
+			result = DEAD;
+		}
+		break;
+	case COLLECTED:
+		getWorld()->getPlayer()->changeSonarBy(1);
+		break;
+	}
+
+	return result;
+}
 
 
 

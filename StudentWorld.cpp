@@ -70,6 +70,8 @@ StudentWorld::StudentWorld(std::string assetDir)
 int StudentWorld::init()
 {
 	setUpDirt();
+	distributeItemsIntoGrid();
+	//setUpDirt();
 	m_player->moveTo(PLAYER_START_X, PLAYER_START_Y); //just in case ...
 
 	m_barrelsLeft = min(getLevel() / 2 + 2, 6);
@@ -163,6 +165,117 @@ bool StudentWorld::cleanUpActorsAndFrackMan()
 }
 
 
+bool StudentWorld::placeItemIntoGrid(Actor* a)
+{
+	// generate a possible location on the grid
+	CoordType x, y;
+
+	bool canPlace = generateAppropriatePossibleLocation(x, y, a->getID());
+
+	if (!canPlace)
+		return false; //can't place the item! Which might be worrisome...
+
+	//interested in placing (upon init)
+
+
+	//first will deal with Boulders
+	bool canPlace = true;
+
+	if (a->getID() == IID_BOULDER)
+	{
+		for (int i = 0; i < a->getWidth(); i++)
+			for (int j = 0; j < a->getHeight(); j++)
+				removeDirtFromLocation(i, j);
+	}
+
+}
+
+
+const int MAX_ATTEMPTS = 200;
+//places into x and y a possible location an actor of identity ID could be placed
+bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int& ID)
+{
+	int i, j;
+	int numAttempts = 0; //if it's tried to place the Goodie over a threshold and is failing, then there's no space for it
+	int x_offset_bottom, y_offset_bottom, x_offset_top, y_offset_top = 0; // 0<=x<=60, 20<=y<=56
+	bool checkForDirtBelow = true; //for boulders, must be at a location that would otherwise be filled with Dirt
+
+	//bool placementGrid[VIEW_WIDTH][VIEW_HEIGHT];
+
+	//for (int i = 0; i < VIEW_WIDTH; i++)
+	//	for (int j = 0; j < VIEW_HEIGHT; j++)
+	//		placementGrid[i][j] = false; //false meaning no 'collisions' with anything else
+
+	//for (int i = 0; i < m_actors.size(); i++)
+
+
+	switch (ID)
+	{
+		//must be placed in dirt
+	case IID_BOULDER:
+	case IID_BARREL:
+	case IID_GOLD:
+		x_offset_bottom = 0;
+		x_offset_top = 4; //(64-60) == 4
+		y_offset_bottom = 20;
+		y_offset_top = 8;// (64-56) == 8
+	//case IID_SONAR:
+		//if i and j reach the end, it's trying to place a Goodie at the top-right corner --> nothing worked
+		do
+		{
+			numAttempts++; // don't want to try this forever!
+
+			i = rand() % (VIEW_WIDTH - x_offset_bottom - x_offset_top) + x_offset_bottom + 1; //gives 0<=x<=60
+			j = rand() % (VIEW_HEIGHT - y_offset_bottom - y_offset_top) + y_offset_bottom + 1; //gives 20<=y<=56 
+													//is definitely within allowed coordinates stated in spec
+
+			bool isOK = true;
+
+			//has to not be in the oil shaft/mining surface, i.e., where there's no dirt
+			if (m_dirts[i][j] == nullptr) //if there's no dirt there
+				continue; //re-rool
+
+			//make sure there is Dirt under the sprite
+			for (int k = 0; k < SPRITE_WIDTH; k++)
+				if (m_dirts[i + k][j - 1] == nullptr)
+					isOK = false;
+
+			if (!isOK) //if there isn't
+				continue; //re-roll
+
+										//these must be hidden in the dirt, so
+
+
+
+			for (int k = 0; k < m_actors.size(); k++)
+			{
+				double dist = distance(m_actors[k]->getX(), m_actors[k]->getY(), i, j);
+				if (dist <= DISTANCE_PLACEMENT)
+				{
+					isOK = false;
+					break; //no need to keep checking if it already overlapped with someone's space
+				}
+			}
+
+			if (isOK) //if isOK is still true, then it's a possible coordinate, so we can get out finally!
+			{
+				x = i;
+				y = j;
+				break;
+			}
+
+		} while (numAttempts < MAX_ATTEMPTS);
+		break;
+	}
+
+
+	//if going randomly didn't work, brute-force it by checking every possible tile
+	//TODO: implement brute-force method in case it's necessary
+
+	return (!(numAttempts == MAX_ATTEMPTS)); //if it didn't reach the max number of attempts, a spot was found
+}
+
+
 //if m_dirts != nullptr, deletes all remaining Dirt objects, and sets the Dirt*'s to nullptr
 void StudentWorld::cleanUpDirt()
 {
@@ -246,7 +359,7 @@ void StudentWorld::setUpDirt()
 //x and y start at the topmost or leftmost square of dirt to be removed depending on the direction of movement:
 // "up or down" --> x is leftmost
 // "left or right" --> y is topmost
-bool StudentWorld::removeDirt(const GraphObject::Direction dir, const CoordType& x, const CoordType& y)
+bool StudentWorld::removeDirtForFrackMan(const GraphObject::Direction dir, const CoordType& x, const CoordType& y)
 {
 	bool result = false;
 
@@ -290,6 +403,21 @@ bool StudentWorld::removeDirt(const GraphObject::Direction dir, const CoordType&
 
 	return result;
 
+}
+
+
+
+void StudentWorld::removeDirtFromLocation(const CoordType & x, const CoordType & y)
+{
+	Dirt* p = m_dirts[x][y];
+
+	if (p != nullptr)
+	{
+		delete p;
+		m_dirts[x][y] = nullptr;
+	}
+
+	return;
 }
 
 
