@@ -14,6 +14,8 @@ double distance(int x1, int y1, int x2, int y2);
 std::string prependCharToStringToSize(std::string s, char c, int size);
 
 
+
+
 GameWorld* createStudentWorld(string assetDir)
 {
 	return new StudentWorld(assetDir);
@@ -70,11 +72,55 @@ StudentWorld::StudentWorld(std::string assetDir)
 int StudentWorld::init()
 {
 	setUpDirt();
-	distributeItemsIntoGrid();
+
+	CoordType x, y;
+	
+	//place boulders
+	int i = 0;
+	while (i < m_bouldersLeft)
+	{
+		bool foundSpot = generateAppropriatePossibleLocation(x, y, IID_BOULDER);
+
+		if(foundSpot)
+		{ 
+			Boulder* p = new Boulder(x, y, this);
+			removeDirtForActor(p);
+			i++;
+		}
+		else exit(3); //bad...
+		//otherwise it tries again
+	}
+
+	//then gold
+	int i = 0;
+	while (i < m_bouldersLeft)
+	{
+		bool foundSpot = generateAppropriatePossibleLocation(x, y, IID_GOLD);
+
+		if (foundSpot)
+		{
+			Gold* p = new Gold(x, y, this);
+			i++;
+		}
+		else exit(3); //bad...
+					  //otherwise it tries again
+	}
+	//then barrels
+	for (int i = 0; i < m_barrelsLeft; i++)
+	{
+		Barrel* p = new Barrel(this);
+		bool wasPlaced = placeItemIntoGrid(p);
+
+		if (!wasPlaced)
+		{
+			delete p; //worrisome...
+		}
+	}
+
 	//setUpDirt();
 	m_player->moveTo(PLAYER_START_X, PLAYER_START_Y); //just in case ...
 
-	m_barrelsLeft = min(getLevel() / 2 + 2, 6);
+	m_bouldersLeft = min(getLevel() / 2 + 2, 6);
 	m_goldLeft = max(5 - getLevel() / 2, 2);
 	m_barrelsLeft = min(2 + getLevel(), 20);
 
@@ -179,15 +225,44 @@ bool StudentWorld::placeItemIntoGrid(Actor* a)
 
 
 	//first will deal with Boulders
-	bool canPlace = true;
+	//bool canPlace = true;
 
+	//remove dirt if it's a boulder
 	if (a->getID() == IID_BOULDER)
 	{
-		for (int i = 0; i < a->getWidth(); i++)
-			for (int j = 0; j < a->getHeight(); j++)
-				removeDirtFromLocation(i, j);
+
 	}
 
+	//place Actor in location
+	a->moveTo(x, y);
+
+	//update vector of Actors
+	m_actors.push_back(a);
+
+	//and get out
+	return true;
+}
+
+
+
+void StudentWorld::removeDirtForActor(const Actor* a)
+{
+	for (int i = 0; i < a->getWidth(); i++)
+		for (int j = 0; j < a->getHeight(); j++)
+			removeDirtFromLocation(a->getX() + i, a->getX() + j);
+}
+
+bool StudentWorld::removeDirtFromLocation(const int& x, const int& y)
+{
+	Dirt* p = m_dirts[x][y];
+	if (p == nullptr)
+		return false;
+	else
+	{
+		delete p;
+		m_dirts[x][y] = nullptr;
+		return true;
+	}
 }
 
 
@@ -276,6 +351,22 @@ bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int
 }
 
 
+bool StudentWorld::isThereDirtBelowActor(const Actor* caller) const
+{
+	CoordType x, y;
+	caller->sendLocation(x, y);
+
+	if (y == 0)
+		return false; //there can't be dirt under it if it's at the bottom!
+
+	for (int k = 0; k < caller->getWidth(); k++)
+		if (m_dirts[x + k][y - 1] == nullptr)
+			return false;
+	//if it made it here, we're good
+	return true;
+
+}
+
 //if m_dirts != nullptr, deletes all remaining Dirt objects, and sets the Dirt*'s to nullptr
 void StudentWorld::cleanUpDirt()
 {
@@ -346,7 +437,8 @@ void StudentWorld::setUpDirt()
 			//create new Dirt object and put it in the appropriate spot in the m_dirts[][]
 			else
 			{
-				m_dirts[i][j] = new Dirt(i, j, this);
+				m_dirts[i][j] = new Dirt(this);
+				m_dirts[i][j]->moveTo(i, j);
 			}
 			
 		}
@@ -407,18 +499,6 @@ bool StudentWorld::removeDirtForFrackMan(const GraphObject::Direction dir, const
 
 
 
-void StudentWorld::removeDirtFromLocation(const CoordType & x, const CoordType & y)
-{
-	Dirt* p = m_dirts[x][y];
-
-	if (p != nullptr)
-	{
-		delete p;
-		m_dirts[x][y] = nullptr;
-	}
-
-	return;
-}
 
 
 

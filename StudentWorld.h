@@ -59,7 +59,6 @@ public:
 
 	bool removeDirtForFrackMan(const GraphObject::Direction dir, const CoordType& x, const CoordType& y);
 
-	void removeDirtFromLocation(const CoordType& x, const CoordType& y);
 
 	std::vector<Actor*>* getActors() { return &(m_actors); }
 	FrackMan* getPlayer() { return m_player; }
@@ -73,23 +72,26 @@ public:
 
 	Dirt*** getDirts() { return m_dirts; }
 
+	void changeBarrelsLeftBy(int x) { m_barrelsLeft -= x; }
 
 	bool isThereDirtAt(int x, int y) { return (m_dirts[x][y] != nullptr); }
 
-	
+	bool StudentWorld::placeItemIntoGrid(Actor* a);
+	bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int& ID);
+
 
 	bool isInvalidLocation(int x, int y) const { return (x < 0 || x >= VIEW_WIDTH || y < 0 || y >= VIEW_HEIGHT); }
 
 	int overlap(const Actor* a, const Actor* b) const;
-
+	bool StudentWorld::isThereDirtBelowActor(const Actor* caller) const;
+	bool StudentWorld::removeDirtFromLocation(const int& x, const int& y);
+	void StudentWorld::removeDirtForActor(const Actor* a);
 
 private:
 
 	//std::string prependCharToStringToSize(std::string s, char c, int size);
 
 
-	bool StudentWorld::placeItemIntoGrid(Actor* a);
-	bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int& ID);
 
 
 

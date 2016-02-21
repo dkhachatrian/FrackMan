@@ -46,10 +46,12 @@ const int PLAYER_START_X = 30;
 const int PLAYER_START_Y = 60;
 
 
-const unsigned int INVALID_DEPTH = -1; //a huge number actually
+const unsigned int DEPTH_INVALID = -1; //a huge number actually
 const unsigned int DEPTH_PLAYER = 0;
-const unsigned int DEPTH_SONAR = 2;
+const unsigned int DEPTH_BOULDER = 1;
+const unsigned int DEPTH_GOODIE = 2;
 const unsigned int DEPTH_DIRT = 3;
+
 //const string DIRT_ID = "dirt";
 
 
@@ -60,6 +62,7 @@ const int MOVED = 0;
 const int COLLECTED = 1;
 const int STATIONARY = 2;
 const int ANNOYED = 3;
+const int DISCOVERED = 4;
 
 
 class Actor :public GraphObject
@@ -83,6 +86,7 @@ public:
 		m_is_solid = solidity; //everything except Boulders is not solid
 		m_width = imageSize * SPRITE_WIDTH;
 		m_height = imageSize * SPRITE_HEIGHT;
+		m_visible = true; //by default
 
 	}
 
@@ -106,6 +110,9 @@ public:
 	double getWidth() const { return m_width; }
 	double getHeight() const { return m_height; }
 	bool isDead() const { return m_isDead; }
+	bool isVisible()  const { return m_visible; }
+
+	bool isThereDirtBelowMe() const;
 
 	//to be used for overlap function
 	double getMaxLength() const;
@@ -130,7 +137,7 @@ protected:
 
 	//helper functions
 
-
+	void setVisibleFlag(bool x) { m_visible = x; }
 	void setSolidityAs(bool state) { m_is_solid = state; }
 
 private:
@@ -140,6 +147,7 @@ private:
 	CoordType m_width;
 	CoordType m_height;
 	bool m_isDead;
+	bool m_visible;
 	//GraphObject m_go;
 
 };
@@ -169,7 +177,7 @@ public:
 
 	virtual int doSomething()
 	{
-		return; //do nothing (how boring!)
+		return 0; //do nothing (how boring!)
 	};
 
 
@@ -228,7 +236,7 @@ public:
 	//virtual int attemptAnnoyedAction() = 0;
 
 protected:
-	virtual void setAnnoyed(bool x) = { m_annoyed = x; };
+	virtual void setAnnoyed(bool x) { m_annoyed = x; };
 private:
 	bool m_annoyed;
 };
@@ -319,15 +327,17 @@ const double DISTANCE_DISCOVER = 4;
 const double DISTANCE_PLACEMENT = 6;
 
 const int SCORE_SONAR = 75;
-
+const int SCORE_BARREL = 1000;
+const int SCORE_GOLD = 10;
 
 class Goodie :public StaticObject
 {
 public:
-	Goodie(int IID, int score, unsigned int depth, StudentWorld* sw, Group canPickMeUp = player, CoordType x = -1, CoordType y = -1) :
-		StaticObject(x, y, IID, depth, sw)
+	Goodie(int IID, int score,  StudentWorld* sw, CoordType x, CoordType y, unsigned int depth = DEPTH_GOODIE, Group canPickMeUp = player) :
+		StaticObject(IID, depth, sw)
 	{
 		setVisible(false); //most start off invisible
+		setVisibleFlag(false);
 		m_score = score;
 		m_whoCanPickMeUp = player;
 	}
@@ -339,43 +349,93 @@ public:
 	int giveScore() const { return m_score; }
 	Group whoCanPickMeUp() const { return m_whoCanPickMeUp; }
 
+	bool shouldITick() { return false; } //most Goodies don't tick (?)
+
+
 protected:
 	void setScore(int score) { m_score = score; }
+	void countDownATick() { m_ticksLeft--; }
+	bool doITick() const { return m_doITick; }
+	void setTickStatus(bool x) { m_doITick = x; }
 	void setPickUpGroup(Group g) { m_whoCanPickMeUp = g; }
 private:
 	int m_score;
+	int m_ticksLeft;
+	bool m_doITick;
 	Group m_whoCanPickMeUp;
 };
 
 class Sonar : public Goodie
 {
 public:
-	Sonar(CoordType x, CoordType y, StudentWorld* sw, int score, int IID, unsigned int depth, Group canPickMeUp);
+	Sonar(CoordType x, CoordType y, StudentWorld* sw, int score, int IID, Group canPickMeUp);
 	virtual ~Sonar() {};
 
 	virtual int doSomething();
 
-	bool ranOutOfTicks() const { return (m_ticksLeft <= 0); }
 private:
-	int m_ticksLeft;
+
 
 };
 
 
+class Barrel :public Goodie
+{
+public:
+	Barrel(CoordType x, CoordType y, StudentWorld* sw, int score, int IID);
+	virtual ~Barrel() {};
+
+	virtual int doSomething();
+};
+
 class Water :public Goodie
 {
+public:
+	Water(CoordType x, CoordType y, StudentWorld* sw, int score, int IID);
 
+
+	virtual int doSomething();
 };
 
 class Gold :public Goodie
 {
+public:
+	Gold(CoordType x, CoordType y, StudentWorld* sw, int score, int IID);
 
+	bool wasDroppedByFrackMan() const { return m_frack; }
+	virtual int doSomething();
+
+private:
+	bool m_frack;
+	int m_ticksLeft;
 };
 
-class Oil :public Goodie
+
+enum state { stable, waiting, falling };
+const int WAIT_TIME_BOULDER = 30;
+class Boulder : public DynamicObject
 {
+public:
+	Boulder(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_BOULDER, unsigned int depth = DEPTH_BOULDER) :
+		DynamicObject(IID, depth, sw)
+	{
+		moveTo(x, y);
+		m_state = stable;
+		setDirection(down);
+		setVisible(true); //just to be safe...
+		m_ticksLeft = WAIT_TIME_BOULDER;
+	}
+	virtual ~Boulder() {};
+	virtual int doSomething() {};
 
+	state checkState() const { return m_state; }
+
+private:
+	state m_state;
+	int m_ticksLeft;
 };
+
+
 
 
 

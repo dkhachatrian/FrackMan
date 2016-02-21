@@ -13,6 +13,10 @@
 //		return -1;
 //}
 
+bool Actor::isThereDirtBelowMe() const
+{
+	return getWorld()->isThereDirtBelowActor(this);
+}
 
 
 //Gives "effective" (x,y) based on sprite size and current direction
@@ -234,6 +238,8 @@ bool FrackMan::doSpecializedAction()
 
 // Goodie functions
 
+
+// NOTE: DOES NOT PLAY A SOUND
 int Goodie::doSomething()
 {
 	if (isDead())
@@ -242,14 +248,41 @@ int Goodie::doSomething()
 		return DEAD;
 	}
 
+	if (doITick())
+	{
+		m_ticksLeft--;
+
+		if (m_ticksLeft == 0)
+		{
+			die();
+			return DEAD;
+		}
+	}
+
 	if (getWorld()->isGoodieCollected(this, whoCanPickMeUp()))
 	{
-		getWorld()->playSound(SOUND_GOT_GOODIE);
+		//getWorld()->playSound(SOUND_GOT_GOODIE);
 		getWorld()->increaseScore(giveScore());
 		die();
 		return COLLECTED;
 	}
+
+	if (!isVisible() && (getWorld()->distanceBetweenActors(getWorld()->getPlayer(), this) <= DISTANCE_DISCOVER))
+	{
+		setVisible(true);
+		setVisibleFlag(true);
+		return DISCOVERED;
+	}
+
+	//if nothing happened, stays stationary
+
+	return STATIONARY;
 }
+
+
+
+
+
 
 
 
@@ -257,12 +290,13 @@ int Goodie::doSomething()
 
 // Sonar Functions
 
-Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_SONAR, int IID = IID_SONAR, unsigned int depth = DEPTH_SONAR, Group canPickMeUp = player):
-	Goodie(IID, score, depth, sw)
+Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_SONAR, int IID = IID_SONAR, Group canPickMeUp = player):
+	Goodie(IID, score, sw)
 {
 	moveTo(x, y);
 	setDirection(right);
 	setVisible(true);
+	setVisibleFlag(true);
 	//setPickUpGroup(player);
 
 	m_ticksLeft = max(100, 10 * getWorld()->getLevel()); //it doesn't see the function in StudentWorld.h?
@@ -271,24 +305,16 @@ Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_SONA
 
 int Sonar::doSomething()
 {
-	int result = Goodie::doSomething(); //does most of the stuff, including making a sound or killing the Goodie if appropriate
+	int result = Goodie::doSomething(); //does most of the stuff,
+	//including making a sound or killing the Goodie or becoming visible if appropriate
 
 	if (result == DEAD)
 		return DEAD;
 
-	m_ticksLeft--; //counting down its time in the World
-
 	switch (result)
 	{
-	//case DEAD:
-	case STATIONARY:
-		if (ranOutOfTicks())
-		{
-			die();
-			result = DEAD;
-		}
-		break;
 	case COLLECTED:
+		getWorld()->playSound(SOUND_GOT_GOODIE);
 		getWorld()->getPlayer()->changeSonarBy(1);
 		break;
 	}
@@ -302,13 +328,85 @@ int Sonar::doSomething()
 
 
 
+// Barrel functions
+
+Barrel::Barrel(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_BARREL, int IID = IID_BARREL) :
+	Goodie(IID, score, sw, x, y)
+{
+	setVisible(false);
+	setDirection(right);
+}
+
+int Barrel::doSomething()
+{
+	int result = Goodie::doSomething(); //does most of the stuff,
+										//including making a sound or killing the Goodie or becoming visible if appropriate
+
+	if (result == DEAD)
+		return DEAD;
+
+	switch (result)
+	{
+	case COLLECTED:
+		getWorld()->playSound(SOUND_FOUND_OIL);
+		getWorld()->changeBarrelsLeftBy(-1);
+		break;
+	}
+
+	return result;
+}
 
 
 
-// Students:  Add code to this file (if you wish), Actor.h, StudentWorld.h, and StudentWorld.cpp
+// Gold functions
+
+Gold::Gold(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_GOLD, int IID = IID_GOLD) :
+	Goodie(IID, score, sw, x, y)
+{
+	setDirection(right);
+
+	//determine visibility and type of gold
+	Actor* f = getWorld()->getPlayer();
+	if (f->getX() == x && f->getY() == y) //if FrackMan is initially where the gold is constructed, he dropped it
+	{
+		m_frack = true;
+		setTickStatus(true);
+		setVisible(true);
+		setVisibleFlag(true);
+		setPickUpGroup(enemies);
+	}
+	else
+	{
+		m_frack = false;
+		setTickStatus(false);
+		setVisible(false);
+		setVisibleFlag(false);
+		setPickUpGroup(player);
+	}
 
 
+}
 
+// NOT FINISHED. Need to implement/design Protester classes
+int Gold::doSomething()
+{
+	int result = Goodie::doSomething();
 
-// Helper functions
+	if (result == DEAD)
+		return DEAD;
 
+	switch (result)
+	{
+	case COLLECTED:
+		if (!wasDroppedByFrackMan())
+		{
+			getWorld()->playSound(SOUND_GOT_GOODIE);
+			getWorld()->getPlayer()->changeGoldBy(1);
+		}
+		else
+		{
+			//tell the protestor he got bribed
+		}
+		break;
+	}
+}
