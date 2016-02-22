@@ -98,7 +98,7 @@ public:
 			{
 				Actor* p = m_actors[i];
 				//filter condition
-				if (!(p->getID() == IID_PROTESTER || p->getID() == IID_HARD_CORE_PROTESTER))
+				if (!(p->getIdentity() == IID_PROTESTER || p->getIdentity() == IID_HARD_CORE_PROTESTER))
 					continue;
 				if (distanceBetweenActors(caller, p) <= distanceOfInterest)
 					return true;
@@ -109,7 +109,7 @@ public:
 			{
 				Actor* p = m_actors[i];
 				//filter condition
-				if (!(p->getID() == IID_BOULDER))
+				if (!(p->getIdentity() == IID_BOULDER))
 					continue;
 				if (distanceBetweenActors(caller, p) <= distanceOfInterest)
 					return true;
@@ -175,9 +175,85 @@ public:
 	void letPlayerUseSonar();
 	void letPlayerFireASquirt();
 	
-	bool StudentWorld::isLocationAffectedByGroup(const CoordType& x, const CoordType& y, Group g, const int& statusOfInterest) const;
+	//NOTE: incomplete
+	bool StudentWorld::isLocationAffectedByGroup(const CoordType& x, const CoordType& y, Group g, const int& statusOfInterest, bool usedSonar = false) const
+	{
+		double distanceOfInterest = -1;
+
+		switch (statusOfInterest)
+		{
+		case DISCOVERED:
+			if (usedSonar)
+				distanceOfInterest = DISTANCE_USE_SONAR;
+			else
+				distanceOfInterest = DISTANCE_DISCOVER;
+			break;
+		case INTERACTED:
+			distanceOfInterest = DISTANCE_INTERACT;
+			break;
+		case PLACED: //only on init
+			distanceOfInterest = DISTANCE_PLACEMENT;
+			break;
+		}
 
 
+		switch (g)
+		{
+		case player:
+			if (distanceBetweenLocationAndActor(x, y, m_player) <= distanceOfInterest)
+				return true;
+			break;
+		case enemies:
+			for (int i = 0; i < m_actors.size(); i++)
+			{
+				Actor* p = m_actors[i];
+				//filter condition
+				if (!(p->getIdentity() == IID_PROTESTER || p->getIdentity() == IID_HARD_CORE_PROTESTER))
+					continue;
+				if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
+					return true;
+			}
+			break;
+		case boulders:
+			for (int i = 0; i < m_actors.size(); i++)
+			{
+				Actor* p = m_actors[i];
+				//filter condition
+				if (!(p->getIdentity() == IID_BOULDER))
+					continue;
+				if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
+					return true;
+			}
+			break;
+
+		case goodies:
+			for (int i = 0; i < m_actors.size(); i++)
+			{
+				Actor* p = m_actors[i];
+				//filter condition
+				if (!(p->getDepth() == DEPTH_GOODIE)) //conveniently, only Goodies are on Layer 2
+					continue;
+				if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
+					return true;
+			}
+			break;
+		case anyone:
+			if (distanceBetweenLocationAndActor(x, y, m_player) <= distanceOfInterest)
+				return true;
+			for (int i = 0; i < m_actors.size(); i++)
+			{
+				Actor* p = m_actors[i];
+				if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
+					return true;
+			}
+			break; //will fill in if it ends up being necessary...
+		}
+		//if it didn't match with anyone, it hasn't been picked up
+		return false;
+	}
+
+
+	bool StudentWorld::isThereSpaceForAGoodieHere(CoordType x, CoordType y) const;
 
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
@@ -190,7 +266,7 @@ public:
 
 	void changeBarrelsLeftBy(int x) { m_barrelsLeft += x; }
 
-	bool isThereDirtAt(int x, int y) { return (m_dirts[x][y] != nullptr); }
+	bool isThereDirtAt(int x, int y) const { return (m_dirts[x][y] != nullptr); }
 
 	bool StudentWorld::placeItemIntoGrid(Actor* a);
 	bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int& ID);
@@ -224,6 +300,7 @@ private:
 	int m_barrelsLeft;
 	int m_goldLeft;
 	int m_bouldersLeft;
+	int m_goodieDenominator;
 	//int m_squirts;
 
 	//int nums[2]; // nums is a ints*

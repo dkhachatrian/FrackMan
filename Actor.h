@@ -100,6 +100,7 @@ public:
 		m_dir = right;
 		m_group = na;
 		m_hp = 0;
+		m_id = IID;
 		//m_visible = true; //by default
 		//setVisible(true); //by default
 	}
@@ -436,7 +437,7 @@ private:
 class Sonar : public Goodie
 {
 public:
-	Sonar(CoordType x, CoordType y, StudentWorld* sw, int score, int IID);
+	Sonar(CoordType x, CoordType y, StudentWorld* sw);
 	virtual ~Sonar() {};
 
 	virtual int doSomething();
@@ -459,7 +460,7 @@ public:
 class Water :public Goodie
 {
 public:
-	Water(CoordType x, CoordType y, StudentWorld* sw, int score, int IID);
+	Water(CoordType x, CoordType y, StudentWorld* sw);
 
 
 	virtual int doSomething();

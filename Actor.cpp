@@ -349,6 +349,7 @@ Boulder::Boulder(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_BOULD
 	setDir(down);
 	setVisibility(true);
 	setSolidityAs(true);
+	setGroupAs(boulders);
 }
 
 int Boulder::doSomething()
@@ -389,12 +390,12 @@ int Boulder::doSomething()
 			die();
 			return DEAD;
 		}
-		if(getWorld()->isActorAffectedByGroup(this, player, INTERACTED))
+		if(getWorld()->isLocationAffectedByGroup(getX(), getY(), player, INTERACTED))
 		{
 			getWorld()->getPlayer()->die();
 			return MOVED; //this will finish the round
 		}
-		if (getWorld()->isActorAffectedByGroup(this, enemies, INTERACTED))
+		if (getWorld()->isLocationAffectedByGroup(getX(), getY(), enemies, INTERACTED))
 		{
 			//make them annoyed by 100 points
 		}
@@ -433,7 +434,7 @@ int Goodie::doSomething()
 		}
 	}
 
-	if (getWorld()->isActorAffectedByGroup(this, whoCanPickMeUp(), INTERACTED))
+	if (getWorld()->isLocationAffectedByGroup(getX(), getY(), whoCanPickMeUp(), INTERACTED))
 	{
 		//getWorld()->playSound(SOUND_GOT_GOODIE);
 		getWorld()->increaseScore(giveScore());
@@ -441,7 +442,7 @@ int Goodie::doSomething()
 		return INTERACTED;
 	}
 
-	if (!isVisible() && (getWorld()->isActorAffectedByGroup(this, whoCanPickMeUp(), DISCOVERED)))
+	if (!isVisible() && (getWorld()->isLocationAffectedByGroup(getX(), getY(), whoCanPickMeUp(), DISCOVERED)))
 	{
 		setVisibility(true);
 		return DISCOVERED;
@@ -463,15 +464,19 @@ int Goodie::doSomething()
 
 // Sonar Functions
 
-Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_SONAR, int IID = IID_SONAR):
-	Goodie(IID, sw, x, y, score)
+Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw):
+	Goodie(IID_SONAR, sw, x, y, SCORE_SONAR)
 {
 	moveTo(x, y);
 	setDir(right);
 	setVisible(true);
 	setVisibleFlag(true);
+	setTickStatus(true);
 	//setPickUpGroup(player);
 	setTickNumber(max(100, 10 * getWorld()->getLevel())); //it doesn't see the function in StudentWorld.h?
+
+	//for testing
+	//setTickNumber(5);
 }
 
 
@@ -592,14 +597,16 @@ int Gold::doSomething()
 
 // Water functions
 
-Water::Water(CoordType x, CoordType y, StudentWorld* sw, int score = SCORE_WATER_POOL, int IID = IID_WATER_POOL) :
-	Goodie(IID, sw, x, y, SCORE_WATER_POOL)
+Water::Water(CoordType x, CoordType y, StudentWorld* sw) :
+	Goodie(IID_WATER_POOL, sw, x, y, SCORE_WATER_POOL)
 {
 	moveTo(x, y);
 	setDir(right);
 	setVisibility(true);
 	setTickStatus(true);
 	setTickNumber(max(100, 300 - (10 * getWorld()->getLevel())));
+	//for testing
+	//setTickNumber(50);
 }
 
 int Water::doSomething()

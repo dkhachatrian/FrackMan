@@ -101,6 +101,7 @@ int StudentWorld::init()
 	m_bouldersLeft = min(getLevel() / 2 + 2, 6);
 	m_goldLeft = max(5 - getLevel() / 2, 2);
 	m_barrelsLeft = min(2 + getLevel(), 20);
+	m_goodieDenominator = (getLevel() * 25) + 300;
 	
 	//place boulders
 	int i = 0;
@@ -154,7 +155,7 @@ int StudentWorld::init()
 	//setUpDirt();
 
 	//for debugging
-	//setAllActorsAsVisible();
+	setAllActorsAsVisible();
 
 
 	return 1; //change later
@@ -167,6 +168,39 @@ int StudentWorld::move()
 										   // The term “Actors” refers to all Protesters, the player, Goodies,
 										   // Boulders, Barrels of oil, Holes, Squirts, the Exit, etc.
 										   // Give each Actor a chance to do something
+
+	//determine whether to add a WaterPool or SonarKit
+	// (will allow more than one Goodie to be at the same location
+	//if (rand() % 10 == 0)
+	if (rand() % m_goodieDenominator == 0) //this is a 1 in m_goodieDenominator chance
+	{
+		int x = 0, y = 0;
+		int rn = rand() % 5;
+		//one in five chance it's a Sonar. Four-in-five chance it's a Water
+
+		//Water Pool
+		if (rn < 4)
+		{
+			do
+			{
+				//generate random coordinates
+				x = rand() % X_UPPER_BOUND;
+				y = rand() % Y_UPPER_BOUND;
+				//generateAppropriatePossibleLocation(x, y, IID_WATER_POOL);
+			}
+			while (!isThereSpaceForAGoodieHere(x, y)); //until it can fit
+			//will give us a location that works
+			Water* p = new Water(x, y, this);
+			m_actors.push_back(p);
+		}
+		//Sonar
+		else if (rn < 5) //aka 1 in 5 chance
+		{
+			Sonar* p = new Sonar(0, 60, this);
+			m_actors.push_back(p);
+		}
+	}
+
 	m_player->doSomething();
 	for (int i = 0; i < m_actors.size(); i++)
 	{
@@ -259,7 +293,7 @@ bool StudentWorld::placeItemIntoGrid(Actor* a)
 	// generate a possible location on the grid
 	CoordType x, y;
 
-	bool canPlace = generateAppropriatePossibleLocation(x, y, a->getID());
+	bool canPlace = generateAppropriatePossibleLocation(x, y, a->getIdentity());
 
 	if (!canPlace)
 		return false; //can't place the item! Which might be worrisome...
@@ -271,7 +305,7 @@ bool StudentWorld::placeItemIntoGrid(Actor* a)
 	//bool canPlace = true;
 
 	//remove dirt if it's a boulder
-	if (a->getID() == IID_BOULDER)
+	if (a->getIdentity() == IID_BOULDER)
 	{
 
 	}
@@ -293,6 +327,15 @@ void StudentWorld::removeDirtForBoulder(const Actor* a)
 	for (int i = 0; i < a->getWidth(); i++)
 		for (int j = 0; j < a->getHeight(); j++)
 			removeDirtFromLocation(a->getX() + i, a->getY() + j);
+}
+
+bool StudentWorld::isThereSpaceForAGoodieHere(CoordType x, CoordType y) const
+{
+	for (int i = 0; i < SPRITE_WIDTH; i++)
+		for (int j = 0; j < SPRITE_HEIGHT; j++)
+			if (isThereDirtAt(x + i, y + j))
+				return false;
+	return true;
 }
 
 bool StudentWorld::removeDirtFromLocation(const int& x, const int& y)
@@ -630,7 +673,7 @@ bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
 {
 	int damage = 0;
 
-	switch (caller->getID())
+	switch (caller->getIdentity())
 	{
 	case IID_WATER_SPURT:
 		damage = -2;
@@ -650,7 +693,7 @@ bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
 		{
 			if (isActorAffectedByActor(caller, p, DISTANCE_INTERACT))
 			{
-				switch (caller->getID())
+				switch (caller->getIdentity())
 				{
 				case IID_WATER_SPURT:
 					if (g == enemies)
@@ -780,7 +823,7 @@ bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Directi
 
 	//if Actor's current location doesn't have it run into a boulder,
 	//but moving it in the place he'd like to would change it
-	if (!isActorAffectedByGroup(caller, boulders, INTERACTED) && isLocationAffectedByGroup(x_t, y_t, boulders, INTERACTED))
+	if (!isLocationAffectedByGroup(caller->getX(), caller->getY(), boulders, INTERACTED) && isLocationAffectedByGroup(x_t, y_t, boulders, INTERACTED))
 	{
 		return false; //don't move, no animation either
 	}
@@ -790,29 +833,7 @@ bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Directi
 	if (isThereDirtInDirectionOfActor(caller))
 		return false;
 
-	//std::vector<Actor*>::iterator it = m_actors.begin();
-	/*
-	//check over all Actors
-	for (int i = 0; i < m_actors.size(); i++)
-	{
-		Actor* p = m_actors[i];
-		if (overlap(caller, p) == TOUCHING)
-		{
-			if (p->isSolid()) //if the thing there is solid (i.e. Boulder), bad
-				return false; //does NOT 'move' the caller (not supposed to animate!)
-		}
-
-	}
-	*/
-	//otherwise, we should be good to go!
-	//update (x,y) and get out
-
-	//not transforming anymore, so don't need this
-	//if(transformed)
-	//	caller->reverseTransform(x_t, y_t, moveDir); //fixes the possible translation done by sendToEffectiveLocation()
-	//x_t or y_t has also already been moved by one square according to moveDir
-	//and by this point we know it's a valid move, so we're good to update the caller's location!
-
+	//can move if made it to here
 	caller->moveTo(x_t, y_t);
 
 	return true;
@@ -932,166 +953,13 @@ double StudentWorld::distanceBetweenLocationAndActor(const CoordType& x, const C
 	return distance(x, y, x2, y2);
 }
 
-/*
-//NOTE: incomplete
-bool StudentWorld::isActorAffectedByGroup(const Actor* caller, Group g, const int& statusOfInterest, bool usedSonar = false) const
-{
-	double distanceOfInterest = -1;
-
-	switch (statusOfInterest)
-	{
-	case DISCOVERED:
-		if (usedSonar)
-			distanceOfInterest = DISTANCE_USE_SONAR;
-		else
-			distanceOfInterest = DISTANCE_DISCOVER;
-		break;
-	case INTERACTED:
-		distanceOfInterest = DISTANCE_INTERACT;
-		break;
-	case PLACED: //only on init
-		distanceOfInterest = DISTANCE_PLACEMENT;
-		break;
-	}
-
-
-	switch(g)
-	{
-	case player:
-		if (distanceBetweenActors(caller, m_player) <= distanceOfInterest)
-			return true;
-		break;
-	case enemies:
-		for (int i = 0; i < m_actors.size(); i++)
-		{
-			Actor* p = m_actors[i];
-			//filter condition
-			if (!(p->getID() == IID_PROTESTER || p->getID() == IID_HARD_CORE_PROTESTER))
-				continue;
-			if (distanceBetweenActors(caller, p) <= distanceOfInterest)
-				return true;
-		}
-		break;
-	case boulders:
-		for (int i = 0; i < m_actors.size(); i++)
-		{
-			Actor* p = m_actors[i];
-			//filter condition
-			if (!(p->getID() == IID_BOULDER))
-				continue;
-			if (distanceBetweenActors(caller, p) <= distanceOfInterest)
-				return true;
-		}
-		break;
-
-	case goodies:
-		for (int i = 0; i < m_actors.size(); i++)
-		{
-			Actor* p = m_actors[i];
-			//filter condition
-			if (!(p->getDepth() == DEPTH_GOODIE)) //conveniently, only Goodies are on Layer 2
-				continue;
-			if (distanceBetweenActors(caller, p) <= distanceOfInterest)
-				return true;
-		}
-		break;
-	case anyone:
-		if (distanceBetweenActors(caller, m_player) <= distanceOfInterest)
-			return true;
-		for (int i = 0; i < m_actors.size(); i++)
-		{
-			Actor* p = m_actors[i];
-			if (distanceBetweenActors(caller, p) <= distanceOfInterest)
-				return true;
-		}
-		break; //will fill in if it ends up being necessary...
-	}
-	//if it didn't match with anyone, it hasn't been picked up
-	return false;
-}
-*/
-//NOTE: incomplete
-bool StudentWorld::isLocationAffectedByGroup(const CoordType& x, const CoordType& y, Group g, const int& statusOfInterest) const
-{
-	double distanceOfInterest = -1;
-
-	switch (statusOfInterest)
-	{
-	case DISCOVERED:
-		distanceOfInterest = DISTANCE_DISCOVER;
-		break;
-	case INTERACTED:
-		distanceOfInterest = DISTANCE_INTERACT;
-		break;
-	case PLACED: //only on init
-		distanceOfInterest = DISTANCE_PLACEMENT;
-		break;
-	}
-
-
-	switch (g)
-	{
-	case player:
-		if (distanceBetweenLocationAndActor(x, y, m_player) <= distanceOfInterest)
-			return true;
-		break;
-	case enemies:
-		for (int i = 0; i < m_actors.size(); i++)
-		{
-			Actor* p = m_actors[i];
-			//filter condition
-			if (!(p->getID() == IID_PROTESTER || p->getID() == IID_HARD_CORE_PROTESTER))
-				continue;
-			if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
-				return true;
-		}
-		break;
-	case boulders:
-		for (int i = 0; i < m_actors.size(); i++)
-		{
-			Actor* p = m_actors[i];
-			//filter condition
-			if (!(p->getID() == IID_BOULDER))
-				continue;
-			if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
-				return true;
-		}
-		break;
-
-	case goodies:
-		for (int i = 0; i < m_actors.size(); i++)
-		{
-			Actor* p = m_actors[i];
-			//filter condition
-			if (!(p->getDepth() == DEPTH_GOODIE)) //conveniently, only Goodies are on Layer 2
-				continue;
-			if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
-				return true;
-		}
-		break;
-	case anyone:
-		if (distanceBetweenLocationAndActor(x, y, m_player) <= distanceOfInterest)
-			return true;
-		for (int i = 0; i < m_actors.size(); i++)
-		{
-			Actor* p = m_actors[i];
-			if (distanceBetweenLocationAndActor(x, y, p) <= distanceOfInterest)
-				return true;
-		}
-		break; //will fill in if it ends up being necessary...
-	}
-	//if it didn't match with anyone, it hasn't been picked up
-	return false;
-}
-
-
 void StudentWorld::letPlayerUseSonar()
 {
 	bool usedSonar = true;
 	for (int i = 0; i < m_actors.size(); i++)
 	{
 		Actor* p = m_actors[i];
-		if (p->getDepth() == DEPTH_GOODIE && isActorAffectedByGroup(p, player, DISCOVERED, usedSonar))
+		if (p->getDepth() == DEPTH_GOODIE && isLocationAffectedByGroup(p->getX(), p->getY(), player, DISCOVERED, usedSonar))
 		{
 			p->setVisibility(true);
 		}
