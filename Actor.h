@@ -38,6 +38,9 @@ const int EXISTS_GAP = 1;
 
 const int INVALID_IID = -1;
 
+enum Group { player, enemies, boulders, goodies, anyone, na };
+
+
 
 const double NORMAL_IMAGE_SIZE = 1;
 const double DIRT_IMAGE_SIZE = 0.25;
@@ -49,6 +52,7 @@ const int PLAYER_START_Y = 60;
 const unsigned int DEPTH_INVALID = -1; //a huge number actually
 const unsigned int DEPTH_PLAYER = 0;
 const unsigned int DEPTH_BOULDER = 1;
+const unsigned int DEPTH_SQUIRT = 1;
 const unsigned int DEPTH_GOODIE = 2;
 const unsigned int DEPTH_DIRT = 3;
 
@@ -94,6 +98,8 @@ public:
 		setVisibility(true);
 		m_isDead = false;
 		m_dir = right;
+		m_group = na;
+		m_hp = 0;
 		//m_visible = true; //by default
 		//setVisible(true); //by default
 	}
@@ -111,6 +117,8 @@ public:
 	}
 
 	virtual ~Actor() { setVisible(false); }
+
+	Group whatGroupAmI() const { return m_group; }
 
 	//doSomething()
 	virtual int doSomething() = 0;
@@ -131,6 +139,9 @@ public:
 	bool isDead() const { return m_isDead; }
 	bool isVisible()  const { return m_visible; }
 	int getDepth() const { return m_depth; }
+
+	int getHealth() const { return m_hp; }
+	void changeHealthBy(int x) { m_hp += x; }
 
 
 	bool isThereDirtNextToMe() const;
@@ -158,7 +169,7 @@ public:
 
 protected:
 	void setIdentityAs(int id) {m_id = id;}
-
+	void setGroupAs(Group g) { m_group = g; }
 	//helper functions
 
 	//ticking
@@ -184,8 +195,9 @@ private:
 	bool m_doITick;
 	int m_depth;
 	Direction m_dir;
+	Group m_group;
 	//GraphObject m_go;
-
+	int m_hp;
 };
 
 //only class with image size different from the rest
@@ -258,6 +270,21 @@ public:
 //virtual int attemptAnnoyedAction() = 0;
 
 
+class Squirt :public DynamicObject
+{
+public:
+	Squirt(CoordType x, CoordType y, StudentWorld* sw, Direction dir);
+
+	virtual ~Squirt() {};
+
+	virtual int doSomething();
+
+};
+
+
+
+
+
 class AnnoyableActor :public DynamicObject
 {
 public:
@@ -267,7 +294,7 @@ public:
 		m_annoyed = false;
 	}
 
-
+	virtual bool didIDie() const { return getHealth() <= 0; }
 	virtual bool isAnnoyed() const { return m_annoyed; }
 	virtual void setAnnoyed(bool x) { m_annoyed = x; };
 	//virtual bool shouldIBeAnnoyed() const = 0;
@@ -286,12 +313,13 @@ class FrackMan :public AnnoyableActor
 public:
 	FrackMan(StudentWorld* sw, CoordType x = PLAYER_START_X, CoordType y = PLAYER_START_Y):AnnoyableActor(IID_PLAYER, DEPTH_PLAYER, sw, x, y)
 	{
-		m_hp = PLAYER_START_HEALTH;
+		changeHealthBy(PLAYER_START_HEALTH);
 		m_squirts = PLAYER_START_SQUIRTS;
 		m_gold = 0;
 		m_sonar = 1;
 		setIdentityAs(IID_PLAYER);
 		setDir(right);
+		setGroupAs(player);
 	};
 
 	virtual int doSomething();
@@ -303,8 +331,7 @@ public:
 	virtual int attemptAnnoyedAction() { return 0; }
 	virtual bool shouldIBeAnnoyed() const { return false; }
 
-	int getHealth() const { return m_hp; }
-	void changeHealthBy(int x) { m_hp += x; }
+
 
 	int getSquirts() const { return m_squirts; }
 	void changeSquirtsBy(int x) { m_squirts += x; }
@@ -326,7 +353,7 @@ protected:
 	virtual void setAnnoyed() {};
 	//virtual bool setDir(int dir);
 private:
-	int m_hp;
+
 	int m_squirts;
 	int m_gold;
 	int m_sonar;
@@ -359,7 +386,6 @@ public:
 };
 
 
-enum Group {player, enemies, boulders, goodies, anyone};
 //from spec (double-check though!)
 const double DISTANCE_INTERACT = 3;
 const double DISTANCE_DISCOVER = 4;
@@ -385,6 +411,7 @@ public:
 		//setVisibleFlag(false);
 		m_score = score;
 		m_whoCanPickMeUp = player;
+		setGroupAs(goodies);
 		//m_doITick = false; //most don't tick
 	}
 	virtual ~Goodie() {};

@@ -1,6 +1,6 @@
 ﻿  StudentWorld.cpp
-c:\vs2015\frackman\frackman\actor.h(92): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
-c:\vs2015\frackman\frackman\actor.h(93): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
+c:\vs2015\frackman\frackman\actor.h(96): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
+c:\vs2015\frackman\frackman\actor.h(97): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
 c:\vs2015\frackman\frackman\studentworld.h(97): warning C4018: '<': signed/unsigned mismatch
 c:\vs2015\frackman\frackman\studentworld.h(108): warning C4018: '<': signed/unsigned mismatch
 c:\vs2015\frackman\frackman\studentworld.h(120): warning C4018: '<': signed/unsigned mismatch
@@ -9,26 +9,27 @@ c:\vs2015\frackman\frackman\studentworld.cpp(76): warning C4018: '<': signed/uns
 c:\vs2015\frackman\frackman\studentworld.cpp(171): warning C4018: '<': signed/unsigned mismatch
 c:\vs2015\frackman\frackman\studentworld.cpp(236): warning C4018: '<': signed/unsigned mismatch
 c:\vs2015\frackman\frackman\studentworld.cpp(368): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(616): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-c:\vs2015\frackman\frackman\studentworld.cpp(629): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(822): warning C4101: 'y1': unreferenced local variable
-c:\vs2015\frackman\frackman\studentworld.cpp(822): warning C4101: 'x1': unreferenced local variable
-c:\vs2015\frackman\frackman\studentworld.cpp(932): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(943): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(955): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(968): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(984): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(1006): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(645): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(651): warning C4244: 'argument': conversion from 'const double' to 'const int', possible loss of data
+c:\vs2015\frackman\frackman\studentworld.cpp(718): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+c:\vs2015\frackman\frackman\studentworld.cpp(731): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(929): warning C4101: 'y1': unreferenced local variable
+c:\vs2015\frackman\frackman\studentworld.cpp(929): warning C4101: 'x1': unreferenced local variable
+c:\vs2015\frackman\frackman\studentworld.cpp(1039): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(1050): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(1062): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(1075): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(1091): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(1154): warning C4018: '<': signed/unsigned mismatch
   Actor.cpp
-c:\vs2015\frackman\frackman\actor.h(92): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
-c:\vs2015\frackman\frackman\actor.h(93): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
+c:\vs2015\frackman\frackman\actor.h(96): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
+c:\vs2015\frackman\frackman\actor.h(97): warning C4244: '=': conversion from 'double' to 'CoordType', possible loss of data
 c:\vs2015\frackman\frackman\studentworld.h(97): warning C4018: '<': signed/unsigned mismatch
 c:\vs2015\frackman\frackman\studentworld.h(108): warning C4018: '<': signed/unsigned mismatch
 c:\vs2015\frackman\frackman\studentworld.h(120): warning C4018: '<': signed/unsigned mismatch
 c:\vs2015\frackman\frackman\studentworld.h(133): warning C4018: '<': signed/unsigned mismatch
   Generating Code...
-c:\vs2015\frackman\frackman\actor.cpp(266): warning C4715: 'FrackMan::attemptToUseSonar': not all control paths return a value
-c:\vs2015\frackman\frackman\actor.cpp(336): warning C4715: 'Boulder::doSomething': not all control paths return a value
-c:\vs2015\frackman\frackman\actor.cpp(519): warning C4715: 'Gold::doSomething': not all control paths return a value
+c:\vs2015\frackman\frackman\actor.cpp(405): warning C4715: 'Boulder::doSomething': not all control paths return a value
+c:\vs2015\frackman\frackman\actor.cpp(588): warning C4715: 'Gold::doSomething': not all control paths return a value
 c:\vs2015\frackman\frackman\studentworld.cpp(445): warning C4715: 'StudentWorld::isThereDirtInDirectionOfActor': not all control paths return a value
   FrackMan.vcxproj -> C:\VS2015\FrackMan\Debug\FrackMan.exe

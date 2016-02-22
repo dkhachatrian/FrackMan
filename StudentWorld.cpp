@@ -112,7 +112,7 @@ int StudentWorld::init()
 		{ 
 			Boulder* p = new Boulder(x, y, this, IID_BOULDER, DEPTH_BOULDER);
 			p->moveTo(x, y);
-			removeDirtForActor(p);
+			removeDirtForBoulder(p);
 			m_actors.push_back(p); //keep track of the Actors
 			i++;
 		}
@@ -288,7 +288,7 @@ bool StudentWorld::placeItemIntoGrid(Actor* a)
 
 
 
-void StudentWorld::removeDirtForActor(const Actor* a)
+void StudentWorld::removeDirtForBoulder(const Actor* a)
 {
 	for (int i = 0; i < a->getWidth(); i++)
 		for (int j = 0; j < a->getHeight(); j++)
@@ -527,8 +527,59 @@ void StudentWorld::setUpDirt()
 //x and y start at the topmost or leftmost square of dirt to be removed depending on the direction of movement:
 // "up or down" --> x is leftmost
 // "left or right" --> y is topmost
-bool StudentWorld::removeDirtForFrackMan(const GraphObject::Direction dir, const CoordType& x, const CoordType& y)
+bool StudentWorld::removeDirtForFrackMan()
 {
+	CoordType x, y, dx = 0, dy = 0;
+
+	m_player->sendLocation(x, y);
+
+	switch (m_player->getDirection())
+	{
+	case GraphObject::left:
+		if (x == 0)
+			return false;
+		dx = -1;
+		break;
+	case GraphObject::right:
+		if (x == X_UPPER_BOUND)
+			return false;
+		dx = m_player->getWidth();
+		break;
+	case GraphObject::up:
+		if (y == Y_UPPER_BOUND)
+			return false;
+		dy = m_player->getHeight();
+		break;
+	case GraphObject::down:
+		if (y == 0)
+			return false;
+		dy = -1;
+		break;
+	}
+	bool result = false;
+
+	switch (m_player->getDirection())
+	{
+	case GraphObject::up:
+	case GraphObject::down:
+		for (int k = 0; k < m_player->getWidth(); k++)
+			if (removeDirtFromLocation(x + dx + k, y + dy))
+				result = true;
+		break;
+	case GraphObject::left:
+	case GraphObject::right:
+		for (int k = 0; k < m_player->getHeight(); k++)
+			if (removeDirtFromLocation(x + dx, y + dy + k))
+				result = true;
+		break;
+
+	}
+	if (result)
+		playSound(SOUND_DIG);
+
+	return result;
+
+	/*
 	bool result = false;
 
 	int x_eff = x;
@@ -570,10 +621,61 @@ bool StudentWorld::removeDirtForFrackMan(const GraphObject::Direction dir, const
 	}
 
 	return result;
-
+	*/
 }
 
 
+// This will undoubtedly need to change in structure once I implement the protesters...
+bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
+{
+	int damage = 0;
+
+	switch (caller->getID())
+	{
+	case IID_WATER_SPURT:
+		damage = -2;
+		break;
+	case IID_BOULDER:
+		damage = -100;
+		break;
+	}
+
+	bool interacted = false;
+
+	for (int i = 0; i < m_actors.size(); i++)
+	{
+		Actor* p = m_actors[i];
+		Group g = p->whatGroupAmI();
+		if (g == player || g == enemies)
+		{
+			if (isActorAffectedByActor(caller, p, DISTANCE_INTERACT))
+			{
+				switch (caller->getID())
+				{
+				case IID_WATER_SPURT:
+					if (g == enemies)
+					{
+						p->changeHealthBy(damage);
+					}
+					interacted = true;
+					break;
+				case IID_BOULDER:
+					if (g == player || g == enemies)
+					{
+						p->changeHealthBy(damage);
+					}
+					interacted = true;
+					break;
+				}
+			}
+
+		}
+		
+
+	}
+
+	return interacted;
+}
 
 
 
@@ -682,6 +784,11 @@ bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Directi
 	{
 		return false; //don't move, no animation either
 	}
+
+	//by this point, FrackMan will have dug through
+	// and no other Actors can move through Dirt
+	if (isThereDirtInDirectionOfActor(caller))
+		return false;
 
 	//std::vector<Actor*>::iterator it = m_actors.begin();
 	/*
@@ -992,6 +1099,47 @@ void StudentWorld::letPlayerUseSonar()
 	playSound(SOUND_SONAR);
 	m_player->changeSonarBy(-1);
 }
+
+void StudentWorld::letPlayerDropGold()
+{
+	CoordType x, y;
+	m_player->sendLocation(x, y);
+	Gold* p = new Gold(x, y, this, SCORE_GOLD_PROTESTER, IID_GOLD);
+	m_actors.push_back(p);
+	m_player->changeGoldBy(-1);
+
+}
+
+void StudentWorld::letPlayerFireASquirt()
+{
+	CoordType x, y, dx = 0, dy = 0;
+	m_player->sendLocation(x, y);
+
+	switch (m_player->getDirection())
+	{
+	case GraphObject::left:
+		dx = -SPRITE_WIDTH;
+		break;
+	case GraphObject::right:
+		dx = SPRITE_WIDTH;
+		break;
+	case GraphObject::up:
+		dy = SPRITE_HEIGHT;
+		break;
+	case GraphObject::down:
+		dy = -SPRITE_HEIGHT;
+		break;
+	}
+
+
+	Squirt* p = new Squirt(x+dx, y+dy, this, m_player->getDirection());
+	m_actors.push_back(p);
+	playSound(SOUND_PLAYER_SQUIRT);
+	m_player->changeSquirtsBy(-1);
+	return;
+
+}
+
 
 
 // Helper functions

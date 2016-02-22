@@ -173,6 +173,50 @@ bool DynamicObject::attemptMove(const Direction dir)
 }
 
 
+// Squirt functions
+
+Squirt::Squirt(CoordType x, CoordType y, StudentWorld* sw, Direction dir) :DynamicObject(IID_WATER_SPURT, DEPTH_SQUIRT, sw, x, y)
+{
+	setVisibility(true);
+	setDir(dir);
+	setTickStatus(true);
+	setTickNumber(4);
+}
+
+int Squirt::doSomething()
+{
+	if (isDead())
+		return DEAD;
+	
+	
+
+	countDownATick();
+	if (getTickNumber() == 0)
+	{
+		die();
+		return DEAD;
+	}
+
+	bool result = getWorld()->attemptToInteractWithNearbyActors(this);
+
+	if (result)
+	{
+		die();
+		return DEAD;
+	}
+
+	//otherwise, keep on trucking
+	result = DynamicObject::attemptMove(getDirection());
+	if (!result)
+	{
+		die();
+		return DEAD; //dies if it hits a wall, dirt, or boulder
+	}
+	//otherwise, it somehow made it through the gauntlet of checks
+	return MOVED;
+
+}
+
 
 
 // FrackMan functions
@@ -208,10 +252,10 @@ int FrackMan::doSomething()
 			die();
 			break;
 		case KEY_PRESS_SPACE:
-			
+			attemptToUseWaterGun();
 			break;
 		case KEY_PRESS_TAB:
-
+			attemptToDropGold();
 			break;
 		case 'z':
 		case 'Z':
@@ -226,11 +270,11 @@ int FrackMan::doSomething()
 
 bool FrackMan::attemptMove(const Direction dir)
 {
-	bool result = DynamicObject::attemptMove(dir);
-	//only digs if he moved
-	if(result)
+	//try to dig if in the same direction
+	if (moveMatchesDir(dir))
 		attemptToDig();
 
+	bool result = DynamicObject::attemptMove(dir);
 
 	return result;
 
@@ -240,6 +284,12 @@ bool FrackMan::attemptMove(const Direction dir)
 //	but at the moment, only thing implemented is for movement (i.e. removing dirt in front of it)
 bool FrackMan::attemptToDig()
 {
+	bool result = false;
+	if (isThereDirtNextToMe())
+		result = getWorld()->removeDirtForFrackMan();
+
+	return result;
+	/*
 	int x_n = getX();
 	int y_n = getY();
 	Direction dir = getDirection();
@@ -254,18 +304,37 @@ bool FrackMan::attemptToDig()
 		//return false;
 	}
 	return removedDirt;
+	*/
 }
-
 
 bool FrackMan::attemptToUseSonar()
 {
 	if (m_sonar == 0)
 		return false;
+	//otherwise, can drop
 
 	getWorld()->letPlayerUseSonar();
+	return true;
 }
 
+bool FrackMan::attemptToDropGold()
+{
+	if (m_gold == 0)
+		return false;
 
+	getWorld()->letPlayerDropGold();
+	return true;
+}
+
+bool FrackMan::attemptToUseWaterGun()
+{
+	if (m_squirts == 0)
+		return false;
+
+	getWorld()->letPlayerFireASquirt();
+	return true;
+
+}
 
 
 // Boulder functions
@@ -477,7 +546,7 @@ Gold::Gold(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_GOLD_F
 	{
 		m_frack = true;
 		setTickStatus(true);
-		//setTickNumber()
+		setTickNumber(100);
 		setVisibility(true);
 		setPickUpGroup(enemies);
 		setScore(SCORE_GOLD_PROTESTER);

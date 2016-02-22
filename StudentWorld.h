@@ -58,7 +58,7 @@ public:
 	virtual void cleanUp();
 
 
-	bool removeDirtForFrackMan(const GraphObject::Direction dir, const CoordType& x, const CoordType& y);
+	bool removeDirtForFrackMan();
 
 
 	std::vector<Actor*>* getActors() { return &(m_actors); }
@@ -142,13 +142,43 @@ public:
 		return false;
 	}
 
-	
-	
+	bool StudentWorld::isActorAffectedByActor(const Actor* a, const Actor* b, const int& statusOfInterest, bool usedSonar = false) const
+	{
+		double distanceOfInterest = -1;
+
+		switch (statusOfInterest)
+		{
+		case DISCOVERED:
+			if (usedSonar)
+				distanceOfInterest = DISTANCE_USE_SONAR;
+			else
+				distanceOfInterest = DISTANCE_DISCOVER;
+			break;
+		case INTERACTED:
+			distanceOfInterest = DISTANCE_INTERACT;
+			break;
+		case PLACED: //only on init
+			distanceOfInterest = DISTANCE_PLACEMENT;
+			break;
+		}
+
+		if (distanceBetweenActors(a, b) <= distanceOfInterest)
+			return true;
+		else return false;
+
+	}
+
+	bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller);
+
+
+	void StudentWorld::letPlayerDropGold();
+	void letPlayerUseSonar();
+	void letPlayerFireASquirt();
 	
 	bool StudentWorld::isLocationAffectedByGroup(const CoordType& x, const CoordType& y, Group g, const int& statusOfInterest) const;
 
 
-	void letPlayerUseSonar();
+
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
 	bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir);
@@ -174,7 +204,7 @@ public:
 	int overlap(const Actor* a, const Actor* b) const;
 	bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const;
 	bool StudentWorld::removeDirtFromLocation(const int& x, const int& y);
-	void StudentWorld::removeDirtForActor(const Actor* a);
+	void StudentWorld::removeDirtForBoulder(const Actor* a);
 
 private:
 
