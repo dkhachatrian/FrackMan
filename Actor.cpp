@@ -228,6 +228,13 @@ int FrackMan::doSomething()
 	int input = 0;
 	bool result;
 
+	if (didIDie())
+	{
+		die();
+		getWorld()->playSound(SOUND_PLAYER_GIVE_UP);
+		return DEAD;
+	}
+
 
 
 	if (Actor::getWorld()->getKey(input)) //hit a key in the tick!
@@ -337,6 +344,73 @@ bool FrackMan::attemptToUseWaterGun()
 }
 
 
+
+// Protester functions
+
+int Protester::doSomething()
+{
+	if (isDead())
+		return DEAD;
+
+
+	switch (m_pState)
+	{
+	case leaving:
+		if (getX() == X_UPPER_BOUND && getY() == Y_UPPER_BOUND)
+		{
+			die();
+			return DEAD;
+		}
+		//otherwise, head over there
+		Direction dir = getWorld()->tellMeHowToGetToMyGoal(this, X_UPPER_BOUND, Y_UPPER_BOUND);
+		attemptMove(dir);
+		return MOVED;
+		break;
+	case resting:
+		setProtesterState(OK);
+		return STATIONARY;
+		//break;
+	case coolingDown:
+		m_currentTick++;
+		if (m_currentTick % m_coolDownPeriod == 0)
+		{
+			setProtesterState(OK);
+		}
+		return STATIONARY;
+		break;
+	case OK:
+		
+
+
+
+		//start resting next tick
+		m_currentTick++;
+		if (m_currentTick % m_restTicks == (m_restTicks - 1))
+		{
+			m_currentTick = 0;
+			setProtesterState(resting);
+		}
+
+		//do some stuff
+
+		break;
+	}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // Boulder functions
 
 Boulder::Boulder(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_BOULDER, unsigned int depth = DEPTH_BOULDER) :
@@ -392,7 +466,7 @@ int Boulder::doSomething()
 		}
 		if(getWorld()->isLocationAffectedByGroup(getX(), getY(), player, INTERACTED))
 		{
-			getWorld()->getPlayer()->die();
+			getWorld()->attemptToInteractWithNearbyActors(this);
 			return MOVED; //this will finish the round
 		}
 		if (getWorld()->isLocationAffectedByGroup(getX(), getY(), enemies, INTERACTED))

@@ -102,7 +102,11 @@ int StudentWorld::init()
 	m_goldLeft = max(5 - getLevel() / 2, 2);
 	m_barrelsLeft = min(2 + getLevel(), 20);
 	m_goodieDenominator = (getLevel() * 25) + 300;
-	
+	m_targetEnemyNumber = max(25, (200 - getLevel()));
+	m_numberOfTicksToWaitBetweenEnemySpawns = min(15, 2 + getLevel() * 1.5);
+	m_ticksBetweenEnemySpawns = 0;
+	m_probabilityHardcoreSpawn = min(90, getLevel() * 10 + 30); //in percent
+
 	//place boulders
 	int i = 0;
 	while (i < m_bouldersLeft)
@@ -169,6 +173,22 @@ int StudentWorld::move()
 										   // Boulders, Barrels of oil, Holes, Squirts, the Exit, etc.
 										   // Give each Actor a chance to do something
 
+	if(m_ticksBetweenEnemySpawns == 0 && getNumberOfEnemies() < m_targetEnemyNumber)
+	{
+		if ((rand() % 100) < m_probabilityHardcoreSpawn)
+		{
+			//spawn a Hardcore Protester at (60,60)
+		}
+		else
+		{
+			//spawn a regular Protester at (60,60)
+		}
+	}
+
+	//count a tick as we wait for a chance to spawn an enemy
+	// (will spawn when m_ticksBetweenEnemySpawns modulo's back down to zero)
+	m_ticksBetweenEnemySpawns = (m_ticksBetweenEnemySpawns + 1) % m_numberOfTicksToWaitBetweenEnemySpawns;
+
 	//determine whether to add a WaterPool or SonarKit
 	// (will allow more than one Goodie to be at the same location
 	//if (rand() % 10 == 0)
@@ -188,7 +208,7 @@ int StudentWorld::move()
 				y = rand() % Y_UPPER_BOUND;
 				//generateAppropriatePossibleLocation(x, y, IID_WATER_POOL);
 			}
-			while (!isThereSpaceForAGoodieHere(x, y)); //until it can fit
+			while (!isThereSpaceForAnActorHere(x, y)); //until it can fit
 			//will give us a location that works
 			Water* p = new Water(x, y, this);
 			m_actors.push_back(p);
@@ -201,7 +221,6 @@ int StudentWorld::move()
 		}
 	}
 
-	m_player->doSomething();
 	for (int i = 0; i < m_actors.size(); i++)
 	{
 		Actor* p = m_actors[i];
@@ -211,6 +230,8 @@ int StudentWorld::move()
 			p->doSomething();
 		}
 	}
+
+	m_player->doSomething();
 
 	removeDeadActors();
 
@@ -320,7 +341,16 @@ bool StudentWorld::placeItemIntoGrid(Actor* a)
 	return true;
 }
 
-
+int StudentWorld::getNumberOfEnemies() const
+{
+	int total = 0;
+	for (int i = 0; i < m_actors.size(); i++)
+	{
+		if (m_actors[i]->whatGroupAmI() == enemies)
+			total++;
+	}
+	return total;
+}
 
 void StudentWorld::removeDirtForBoulder(const Actor* a)
 {
@@ -329,7 +359,7 @@ void StudentWorld::removeDirtForBoulder(const Actor* a)
 			removeDirtFromLocation(a->getX() + i, a->getY() + j);
 }
 
-bool StudentWorld::isThereSpaceForAGoodieHere(CoordType x, CoordType y) const
+bool StudentWorld::isThereSpaceForAnActorHere(CoordType x, CoordType y) const
 {
 	for (int i = 0; i < SPRITE_WIDTH; i++)
 		for (int j = 0; j < SPRITE_HEIGHT; j++)
@@ -443,16 +473,25 @@ bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const
 	CoordType x, y;
 	caller->sendLocation(x, y);
 
+	return isThereDirtInDirection(caller->getDirection(), x, y, caller->getWidth(), caller->getHeight());
 
 	//if (y == 0)
 	//	return false; //there can't be dirt under it if it's at the bottom!
 
-	switch (caller->getDirection())
+
+
+}
+
+
+bool StudentWorld::isThereDirtInDirection(GraphObject::Direction dir, CoordType x, CoordType y, CoordType height, CoordType width) const
+{
+
+	switch (dir)
 	{
 	case GraphObject::down:
 		if (y == 0)
 			return false; //nothing below the bottom!
-		for (int k = 0; k < caller->getWidth(); k++)
+		for (int k = 0; k < width; k++)
 			if (m_dirts[x + k][y - 1] != nullptr)
 				return true;
 		//if it made it here, all of the ones underneath are nullptr --> no dirt underneath
@@ -460,15 +499,15 @@ bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const
 	case GraphObject::up:
 		if (y == Y_UPPER_BOUND)
 			return false; //nothing above the top!
-		for (int k = 0; k < caller->getWidth(); k++)
-			if (m_dirts[x + k][y + caller->getHeight()] != nullptr)
+		for (int k = 0; k < width; k++)
+			if (m_dirts[x + k][y + height] != nullptr)
 				return true;
 		//if it made it here, all of the ones underneath are nullptr --> no dirt underneath
 		return false;
 	case GraphObject::left:
 		if (x == 0)
 			return false; //nothing left of the left edge!
-		for (int k = 0; k < caller->getHeight(); k++)
+		for (int k = 0; k < height; k++)
 			if (m_dirts[x - 1][y + k] != nullptr)
 				return true;
 		//if it made it here, all of the ones underneath are nullptr --> no dirt underneath
@@ -476,16 +515,20 @@ bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const
 	case GraphObject::right:
 		if (x == X_UPPER_BOUND)
 			return false; //nothing right of the right edge!
-		for (int k = 0; k < caller->getHeight(); k++)
-			if (m_dirts[x + caller->getWidth()][y + k] != nullptr)
+		for (int k = 0; k < height; k++)
+			if (m_dirts[x + width][y + k] != nullptr)
 				return true;
 		//if it made it here, all of the ones underneath are nullptr --> no dirt underneath
 		return false;
 	}
-	
 
 
 }
+
+
+
+
+
 
 //if m_dirts != nullptr, deletes all remaining Dirt objects, and sets the Dirt*'s to nullptr
 void StudentWorld::cleanUpDirt()
@@ -681,39 +724,27 @@ bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
 	case IID_BOULDER:
 		damage = -100;
 		break;
+		//case for Protesters with player?
 	}
 
 	bool interacted = false;
+
+	//check against player
+	if (caller->getIdentity() == IID_BOULDER && isActorAffectedByActor(caller, m_player, INTERACTED))
+	{
+		m_player->changeHealthBy(damage);
+	}
 
 	for (int i = 0; i < m_actors.size(); i++)
 	{
 		Actor* p = m_actors[i];
 		Group g = p->whatGroupAmI();
-		if (g == player || g == enemies)
+		if (g == enemies && isActorAffectedByActor(caller, p, DISTANCE_INTERACT))
 		{
-			if (isActorAffectedByActor(caller, p, DISTANCE_INTERACT))
-			{
-				switch (caller->getIdentity())
-				{
-				case IID_WATER_SPURT:
-					if (g == enemies)
-					{
-						p->changeHealthBy(damage);
-					}
-					interacted = true;
-					break;
-				case IID_BOULDER:
-					if (g == player || g == enemies)
-					{
-						p->changeHealthBy(damage);
-					}
-					interacted = true;
-					break;
-				}
-			}
-
+			p->changeHealthBy(damage);
+			interacted = true;
+			break;
 		}
-		
 
 	}
 
@@ -788,57 +819,69 @@ std::string StudentWorld::formatDisplayText(int score, int level, int lives,
 //POSTCONDITON: Moves the caller in the appropriate direction if possible, returning true. Else, returns false.
 bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir)
 {
-	CoordType x_t, y_t;
-	caller->sendLocation(x_t, y_t);
+	CoordType x, y;
+	caller->sendLocation(x, y);
 
-
-	//bool transformed = caller->sendEffectiveLocation(x_t, y_t, moveDir); //causes problems when approaching from the left
-
-	switch (moveDir)
-	{
-	case GraphObject::up:
-		//x = getX();
-		y_t += UP_DIR;
-		break;
-	case GraphObject::down:
-		//x = getX();
-		y_t += DOWN_DIR;
-		break;
-	case GraphObject::left:
-		x_t += LEFT_DIR;
-		//y = getY();
-		break;
-	case GraphObject::right:
-		x_t += RIGHT_DIR;
-		//y = getY();
-		break;
-	}
-
-	if (isInvalidLocation(x_t, y_t)) //if trying to go outside possible gridspace, bad
+	if (isInvalidLocation(x, y)) //if trying to go outside possible gridspace, bad
 	{
 		caller->moveTo(caller->getX(), caller->getY()); //make it 'move' in place for animation
 		return false;
 	}
+
+	//bool transformed = caller->sendEffectiveLocation(x_t, y_t, moveDir); //causes problems when approaching from the left
+
+	bool result = tryToMoveFromLocation(x, y, caller->getDirection());
 		//return false;
+
+
+
+	if(result)
+		caller->moveTo(x, y);
+
+	return result;
+}
+
+void StudentWorld::moveCoordsInDirection(CoordType& x, CoordType& y, GraphObject::Direction dir) const
+{
+	switch (dir)
+	{
+	case GraphObject::up:
+		//x = getX();
+		y += UP_DIR;
+		break;
+	case GraphObject::down:
+		//x = getX();
+		y += DOWN_DIR;
+		break;
+	case GraphObject::left:
+		x += LEFT_DIR;
+		//y = getY();
+		break;
+	case GraphObject::right:
+		x += RIGHT_DIR;
+		//y = getY();
+		break;
+	}
+}
+
+
+bool StudentWorld::tryToMoveFromLocation(CoordType& x, CoordType& y, GraphObject::Direction moveDir)
+{
+	CoordType x_old = x, y_old = y;
+
+	moveCoordsInDirection(x, y, moveDir);
 
 	//if Actor's current location doesn't have it run into a boulder,
 	//but moving it in the place he'd like to would change it
-	if (!isLocationAffectedByGroup(caller->getX(), caller->getY(), boulders, INTERACTED) && isLocationAffectedByGroup(x_t, y_t, boulders, INTERACTED))
+	if (!isLocationAffectedByGroup(x_old, y_old, boulders, INTERACTED) && isLocationAffectedByGroup(x, y, boulders, INTERACTED))
 	{
 		return false; //don't move, no animation either
 	}
 
 	//by this point, FrackMan will have dug through
 	// and no other Actors can move through Dirt
-	if (isThereDirtInDirectionOfActor(caller))
-		return false;
-
-	//can move if made it to here
-	caller->moveTo(x_t, y_t);
-
-	return true;
+	return (isThereSpaceForAnActorHere(x, y));
 }
-
 
 // Students:  Add code to this file (if you wish), StudentWorld.h, Actor.h and Actor.cpp
 
@@ -1008,6 +1051,95 @@ void StudentWorld::letPlayerFireASquirt()
 
 }
 
+
+GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Actor* caller, CoordType x_goal, CoordType y_goal) const
+{
+	CoordType x, y;
+	caller->sendLocation(x, y);
+
+	return HowToGetFromLocationToGoal(x, y, x_goal, y_goal);
+}
+
+#include <queue>
+const char WALL = 'X';
+const char BREADCRUMB = '#';
+const char PATH = '.';
+const char GOAL = '%';
+
+GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
+{
+	return GraphObject::right;
+
+	std::queue<Coord> s;
+
+	char a[X_UPPER_BOUND][Y_UPPER_BOUND];
+
+	for (int i = 0; i < X_UPPER_BOUND; i++)
+		for (int j = 0; j < Y_UPPER_BOUND; j++)
+		{
+			if (isThereDirtAt(i, j))
+				a[i][j] = WALL;
+			else a[i][j] = PATH;
+		}
+
+	//to obtain Direction, will have to work backwards, from Goal to Actor
+	// When they finally match, return the opposite direction of that used to reach the Actor
+	Coord c(x_goal, y_goal);
+	a[x_actor][y_actor] = GOAL;
+
+	CoordType x = c.m_x, y = c.m_y;
+
+	if (c.m_x == x_actor && c.m_y == y_actor)
+		return GraphObject::none;
+
+	s.push(c);
+
+	while (!s.empty())
+	{
+
+		c = s.front();
+		s.pop();
+		x = c.m_x, y = c.m_y;
+		a[x][y] = BREADCRUMB;
+
+		if (a[x + LEFT_DIR][y] == GOAL)
+			return GraphObject::right;
+		else if (a[x + LEFT_DIR][y] == PATH)
+		{
+			Coord d(x + LEFT_DIR, y);
+			s.push(d);
+		}
+
+		if (a[x][y + DOWN_DIR] == GOAL)
+			return GraphObject::up;
+		else if (a[x][y + DOWN_DIR] == PATH)
+		{
+			Coord d(x, y + DOWN_DIR);
+			s.push(d);
+		}
+
+		if (a[x + RIGHT_DIR][y] == GOAL)
+			return GraphObject::left;
+		else if (a[x + RIGHT_DIR][y] == PATH)
+		{
+			Coord d(x + RIGHT_DIR, y);
+			s.push(d);
+		}
+
+		if (a[x][y + UP_DIR] == GOAL)
+			return GraphObject::down;
+		else if (a[x][y + UP_DIR] == PATH)
+		{
+			Coord d(x, y + UP_DIR);
+			s.push(d);
+		}
+
+	}
+
+	//if made it here and didn't return already, can't make it back (which is worrisome...)
+	return GraphObject::none;
+
+}
 
 
 // Helper functions

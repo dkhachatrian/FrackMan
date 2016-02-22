@@ -253,7 +253,13 @@ public:
 	}
 
 
-	bool StudentWorld::isThereSpaceForAGoodieHere(CoordType x, CoordType y) const;
+	GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Actor* caller, CoordType x_goal, CoordType y_goal) const;
+
+	GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const;
+
+
+
+	bool StudentWorld::isThereSpaceForAnActorHere(CoordType x, CoordType y) const;
 
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
@@ -272,6 +278,11 @@ public:
 	bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int& ID);
 
 
+	bool tryToMoveFromLocation(CoordType& x, CoordType& y, const GraphObject::Direction moveDir);
+
+
+	void StudentWorld::moveCoordsInDirection(CoordType& x, CoordType& y, GraphObject::Direction dir) const;
+
 	//for debugging
 	void StudentWorld::setAllActorsAsVisible();
 
@@ -279,6 +290,7 @@ public:
 
 	int overlap(const Actor* a, const Actor* b) const;
 	bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const;
+	bool StudentWorld::isThereDirtInDirection(GraphObject::Direction dir, CoordType x, CoordType y, CoordType height, CoordType width) const;
 	bool StudentWorld::removeDirtFromLocation(const int& x, const int& y);
 	void StudentWorld::removeDirtForBoulder(const Actor* a);
 
@@ -286,14 +298,11 @@ private:
 
 	//std::string prependCharToStringToSize(std::string s, char c, int size);
 
-
-
-
-
 	void setUpDirt();
 	void cleanUpDirt();
 	void initDirt();
 	bool cleanUpActorsAndFrackMan();
+	int getNumberOfEnemies() const;
 
 
 	//keep track of how many of these items are left in the level
@@ -301,9 +310,14 @@ private:
 	int m_goldLeft;
 	int m_bouldersLeft;
 	int m_goodieDenominator;
-	//int m_squirts;
+	int m_ticksBetweenEnemySpawns;
+	int m_numberOfTicksToWaitBetweenEnemySpawns;
+	int m_targetEnemyNumber;
+	int m_probabilityHardcoreSpawn;
+	
+	//GraphObject::Direction** m_howToLeave;
 
-	//int nums[2]; // nums is a ints*
+
 	std::vector<Actor*> m_actors;
 	FrackMan* m_player;
 	Dirt*** m_dirts;

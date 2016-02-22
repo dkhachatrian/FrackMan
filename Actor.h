@@ -41,6 +41,17 @@ const int INVALID_IID = -1;
 enum Group { player, enemies, boulders, goodies, anyone, na };
 
 
+struct Coord
+{
+	Coord(CoordType x, CoordType y)
+	{
+		m_x = x;
+		m_y = y;
+	}
+
+	CoordType m_x, m_y;
+};
+
 
 const double NORMAL_IMAGE_SIZE = 1;
 const double DIRT_IMAGE_SIZE = 0.25;
@@ -51,6 +62,7 @@ const int PLAYER_START_Y = 60;
 
 const unsigned int DEPTH_INVALID = -1; //a huge number actually
 const unsigned int DEPTH_PLAYER = 0;
+const unsigned int DEPTH_PROTESTER = 0;
 const unsigned int DEPTH_BOULDER = 1;
 const unsigned int DEPTH_SQUIRT = 1;
 const unsigned int DEPTH_GOODIE = 2;
@@ -116,6 +128,9 @@ public:
 		setDirection(d);
 		m_dir = d;
 	}
+
+	
+	bool didIDie() const { return m_hp <= 0; }
 
 	virtual ~Actor() { setVisible(false); }
 
@@ -286,33 +301,12 @@ public:
 
 
 
-class AnnoyableActor :public DynamicObject
+
+
+class FrackMan :public DynamicObject
 {
 public:
-	AnnoyableActor(int IID, unsigned int depth, StudentWorld* sw, CoordType x = -1, CoordType y = -1, double imageSize = NORMAL_IMAGE_SIZE) :
-		DynamicObject(IID, depth, sw, x, y, imageSize)
-	{
-		m_annoyed = false;
-	}
-
-	virtual bool didIDie() const { return getHealth() <= 0; }
-	virtual bool isAnnoyed() const { return m_annoyed; }
-	virtual void setAnnoyed(bool x) { m_annoyed = x; };
-	//virtual bool shouldIBeAnnoyed() const = 0;
-	virtual int attemptAnnoyedAction() = 0;
-
-protected:
-private:
-	bool m_annoyed;
-};
-
-
-
-
-class FrackMan :public AnnoyableActor
-{
-public:
-	FrackMan(StudentWorld* sw, CoordType x = PLAYER_START_X, CoordType y = PLAYER_START_Y):AnnoyableActor(IID_PLAYER, DEPTH_PLAYER, sw, x, y)
+	FrackMan(StudentWorld* sw, CoordType x = PLAYER_START_X, CoordType y = PLAYER_START_Y):DynamicObject(IID_PLAYER, DEPTH_PLAYER, sw, x, y)
 	{
 		changeHealthBy(PLAYER_START_HEALTH);
 		m_squirts = PLAYER_START_SQUIRTS;
@@ -329,8 +323,8 @@ public:
 
 	//for the purposes of compiling...
 	virtual bool isAnnoyed() { return false; }
-	virtual int attemptAnnoyedAction() { return 0; }
-	virtual bool shouldIBeAnnoyed() const { return false; }
+	//virtual int attemptAnnoyedAction() { return 0; }
+	//virtual bool shouldIBeAnnoyed() const { return false; }
 
 
 
@@ -361,15 +355,47 @@ private:
 };
 
 
-class Protester :public Actor
+
+enum protesterState { leaving, resting, coolingDown, OK };
+
+class Protester :public DynamicObject
+{
+public:
+	Protester(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_PROTESTER) :DynamicObject(IID, DEPTH_PROTESTER, sw, x, y)
+	{
+		setVisibility(true);
+		setDir(left);
+		changeHealthBy(5);
+		m_pState = OK;
+		m_restTicks = 4;
+	}
+	virtual ~Protester() {};
+
+	virtual int doSomething();
+
+
+
+	protesterState getProtesterState() const { return m_pState; }
+	void setProtesterState(protesterState s) { m_pState = s; }
+	bool canSeeFrackMan() const;
+
+	bool isAnnoyed() const { return getHealth() <= 0; }
+
+private:
+	int m_restTicks;
+	int m_currentTick;
+	int m_coolDownPeriod;
+	protesterState m_pState;
+	bool m_annoyed;
+};
+
+class HardcoreProtester :public Protester
 {
 public:
 
 private:
 
 };
-
-
 
 //entirely made to have a branch to oppose DynamicObject -- doesn't actually add much in terms of features
 // (at least, that I can think of at the moment...)
