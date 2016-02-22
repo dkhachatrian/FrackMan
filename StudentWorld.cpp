@@ -1079,6 +1079,12 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 		{
 			if (isThereDirtAt(i, j))
 				a[i][j] = WALL;
+			else if (isThereABoulderAt(i, j))
+			{
+				for (int k = 0; k < SPRITE_WIDTH; k++)
+					for (int l = 0; l < SPRITE_HEIGHT; l++)
+						a[i + k][j + l] = WALL;
+			}
 			else a[i][j] = PATH;
 		}
 
@@ -1139,6 +1145,23 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 	//if made it here and didn't return already, can't make it back (which is worrisome...)
 	return GraphObject::none;
 
+}
+
+
+bool StudentWorld::isThereABoulderAt(CoordType x, CoordType y) const
+{
+	for (int i = 0; i < m_actors.size(); i++)
+	{
+		Actor* p = m_actors[i];
+		if (p->whatGroupAmI() == boulders)
+		{
+			CoordType a, b;
+			p->sendLocation(a, b);
+			if (x == a && y == b)
+				return true;
+		}
+	}
+	return false;
 }
 
 

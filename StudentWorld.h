@@ -317,6 +317,8 @@ private:
 	
 	//GraphObject::Direction** m_howToLeave;
 
+	bool StudentWorld::isThereABoulderAt(CoordType x, CoordType y) const;
+
 
 	std::vector<Actor*> m_actors;
 	FrackMan* m_player;

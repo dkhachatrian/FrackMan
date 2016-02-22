@@ -352,6 +352,7 @@ int Protester::doSomething()
 	if (isDead())
 		return DEAD;
 
+	Direction dir = none;
 
 	switch (m_pState)
 	{
@@ -362,7 +363,7 @@ int Protester::doSomething()
 			return DEAD;
 		}
 		//otherwise, head over there
-		Direction dir = getWorld()->tellMeHowToGetToMyGoal(this, X_UPPER_BOUND, Y_UPPER_BOUND);
+		dir = getWorld()->tellMeHowToGetToMyGoal(this, X_UPPER_BOUND, Y_UPPER_BOUND);
 		attemptMove(dir);
 		return MOVED;
 		break;
