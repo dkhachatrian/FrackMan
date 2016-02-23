@@ -41,7 +41,7 @@ const int EXISTS_GAP = 1;
 
 const int INVALID_IID = -1;
 
-enum Group { player, enemies, boulders, goodies, anyone, na };
+enum Group { player, enemies, boulders, goodies, gold, anyone, na };
 
 
 struct Coord
@@ -116,6 +116,8 @@ public:
 		m_group = na;
 		m_hp = 0;
 		m_id = IID;
+
+		m_annoyed = false;
 		//m_visible = true; //by default
 		//setVisible(true); //by default
 	}
@@ -131,7 +133,8 @@ public:
 		setDirection(d);
 		m_dir = d;
 	}
-
+	virtual void performGiveUpAction() {};
+	virtual void bribeMe() {}; //only protesters get bribed. Done to allow int
 	
 	bool didIDie() const { return m_hp <= 0; }
 
@@ -186,9 +189,14 @@ public:
 	void die() { m_isDead = true; }
 
 
+	void setAnnoyed(bool x) { m_annoyed = x; }
+	bool amIAnnoyed() { return m_annoyed; }
+
+
 protected:
 	void setIdentityAs(int id) {m_id = id;}
 	void setGroupAs(Group g) { m_group = g; }
+	void setHealth(int hp) { m_hp = hp; }
 	//helper functions
 
 	//ticking
@@ -197,6 +205,8 @@ protected:
 	void setTickStatus(bool x) { m_doITick = x; }
 	void setTickNumber(int x) { m_ticksLeft = x; }
 	int getTickNumber() const { return m_ticksLeft; }
+
+
 
 
 	void setVisibleFlag(bool x) { m_visible = x; }
@@ -217,6 +227,8 @@ private:
 	Group m_group;
 	//GraphObject m_go;
 	int m_hp;
+
+	bool m_annoyed;
 };
 
 //only class with image size different from the rest
@@ -361,6 +373,9 @@ private:
 
 enum protesterState { leaving, resting, coolingDown, OK };
 
+const int REST_TICK_NORMAL = 4;
+const int REST_TICK_YELL = 15;
+
 class Protester :public DynamicObject
 {
 public:
@@ -368,32 +383,42 @@ public:
 	{
 		setVisibility(true);
 		setDir(left);
-		changeHealthBy(5);
+		setHealth(5);
+		setGroupAs(enemies);
 		m_pState = OK;
-		m_restTicks = 4;
-		m_coolDownPeriod = 15;
+		m_restTicks = REST_TICK_NORMAL;
+		m_coolDownPeriod = REST_TICK_YELL;
 		m_turnPeriod = 200;
 		rollNumberOfTimesToMoveInCurrentDirection();
 		m_currentRestTick = 0;
 		m_currentNonrestTick = 0;
 		m_currentNonTurnedTick = 0;
 		m_currentCoolDownTick = 0;
+		m_annoyedRestTick = 0; 
 	}
 	virtual ~Protester() {};
 
 	virtual int doSomething();
 	virtual Direction tryToGetToFrackMan() const;
+
+
+	virtual void bribeMe();
+	//virtual void respondToGold();
 	int getDirTimes() const { return m_numTimesCurrentDir; }
 
-	void resetTick(int& t) { t = 0; }
+	//void resetTick(int& t) { t = 0; }
+
+	void setAnnoyedTickCount(int t) { m_annoyedRestTick = t; }
 
 	protesterState getProtesterState() const { return m_pState; }
 	void setProtesterState(protesterState s) { m_pState = s; }
 	//Graph::Direction canSeeFrackMan() const;
 	void rollNumberOfTimesToMoveInCurrentDirection() { m_numTimesCurrentDir = (rand() % 53) + 8; }
 
+	virtual void performGiveUpAction();
 
-	bool isAnnoyed() const { return getHealth() <= 0; }
+protected:
+
 
 private:
 	int m_restTicks;
@@ -404,16 +429,33 @@ private:
 	int m_currentCoolDownTick;
 	int m_coolDownPeriod;
 	int m_numTimesCurrentDir;
+	int m_annoyedRestTick;
 	protesterState m_pState;
-	bool m_annoyed;
+
 };
+
 
 class HardcoreProtester :public Protester
 {
 public:
+	HardcoreProtester(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_HARD_CORE_PROTESTER):Protester(x, y, sw, IID)
+	{
+		m_bribed = false;
+		setHealth(20);
+		setDetectionRange();
+	}
+	virtual int doSomething();
 
+
+
+	virtual Direction tryToGetToFrackMan() const;
+	virtual void bribeMe();
+
+protected:
+	void setDetectionRange();
 private:
-
+	bool m_bribed;
+	int m_detectionRange;
 };
 
 //entirely made to have a branch to oppose DynamicObject -- doesn't actually add much in terms of features
@@ -460,7 +502,7 @@ public:
 		setGroupAs(goodies);
 		//m_doITick = false; //most don't tick
 	}
-	virtual ~Goodie() {};
+	virtual ~Goodie() { };
 
 	virtual int doSomething();
 

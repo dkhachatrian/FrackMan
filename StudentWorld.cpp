@@ -102,10 +102,11 @@ int StudentWorld::init()
 	m_goldLeft = max(5 - getLevel() / 2, 2);
 	m_barrelsLeft = min(2 + getLevel(), 20);
 	m_goodieDenominator = (getLevel() * 25) + 300;
-	m_targetEnemyNumber = max(25, (200 - getLevel()));
-	m_numberOfTicksToWaitBetweenEnemySpawns = min(15, 2 + getLevel() * 1.5);
-	m_ticksBetweenEnemySpawns = 0;
+	m_targetEnemyNumber = min(15, 2 + getLevel() * 1.5);
+	m_numberOfTicksToWaitBetweenEnemySpawns = max(25, (200 - getLevel())); 
+	m_ticksBetweenEnemySpawns = 1; //an enemy will spawn in the first tick
 	m_probabilityHardcoreSpawn = min(90, getLevel() * 10 + 30); //in percent
+	m_numEnemies = 0;
 
 	//place boulders
 	int i = 0;
@@ -172,22 +173,33 @@ int StudentWorld::move()
 										   // The term “Actors” refers to all Protesters, the player, Goodies,
 										   // Boulders, Barrels of oil, Holes, Squirts, the Exit, etc.
 										   // Give each Actor a chance to do something
+	m_ticksBetweenEnemySpawns--;
 
-	if(m_ticksBetweenEnemySpawns == 0 && getNumberOfEnemies() < m_targetEnemyNumber)
+	if(m_ticksBetweenEnemySpawns % m_numberOfTicksToWaitBetweenEnemySpawns == 0 && getNumberOfEnemies() < m_targetEnemyNumber)
 	{
+		m_ticksBetweenEnemySpawns = m_numberOfTicksToWaitBetweenEnemySpawns; //reset tick counter
+
+		//Protester* p = new Protester(X_UPPER_BOUND, Y_UPPER_BOUND, this);
+		//m_actors.push_back(p);
+
 		if ((rand() % 100) < m_probabilityHardcoreSpawn)
 		{
 			//spawn a Hardcore Protester at (60,60)
+			//HardcoreProtester* p = new HardcoreProtester(X_UPPER_BOUND, Y_UPPER_BOUND, this);
+			//m_actors.push_back(p);
 		}
 		else
 		{
 			//spawn a regular Protester at (60,60)
+			Protester* p = new Protester(X_UPPER_BOUND, Y_UPPER_BOUND, this);
+			m_actors.push_back(p);
 		}
+		m_numEnemies++;
 	}
 
 	//count a tick as we wait for a chance to spawn an enemy
 	// (will spawn when m_ticksBetweenEnemySpawns modulo's back down to zero)
-	m_ticksBetweenEnemySpawns = (m_ticksBetweenEnemySpawns + 1) % m_numberOfTicksToWaitBetweenEnemySpawns;
+	//m_ticksBetweenEnemySpawns = (m_ticksBetweenEnemySpawns + 1) % m_numberOfTicksToWaitBetweenEnemySpawns;
 
 	//determine whether to add a WaterPool or SonarKit
 	// (will allow more than one Goodie to be at the same location
@@ -361,6 +373,8 @@ void StudentWorld::removeDirtForBoulder(const Actor* a)
 
 bool StudentWorld::isThereSpaceForAnActorHere(CoordType x, CoordType y) const
 {
+	if (isInvalidLocation(x, y))
+		return false;
 	for (int i = 0; i < SPRITE_WIDTH; i++)
 		for (int j = 0; j < SPRITE_HEIGHT; j++)
 			if (isThereDirtAt(x + i, y + j))
@@ -712,6 +726,7 @@ bool StudentWorld::removeDirtForFrackMan()
 
 
 // This will undoubtedly need to change in structure once I implement the protesters...
+// increases score if it kills enemies in the appropriate manner
 bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
 {
 	int damage = 0;
@@ -739,9 +754,28 @@ bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
 	{
 		Actor* p = m_actors[i];
 		Group g = p->whatGroupAmI();
-		if (g == enemies && isActorAffectedByActor(caller, p, DISTANCE_INTERACT))
+		if (m_actors[i]->whatGroupAmI() == enemies && isActorAffectedByActor(caller, m_actors[i], INTERACTED))
 		{
 			p->changeHealthBy(damage);
+			if (p->didIDie())
+			{
+				//playSound(SOUND_PROTESTER_GIVE_UP);
+				p->performGiveUpAction();
+				if (caller->getIdentity() == IID_BOULDER)
+					StudentWorld::increaseScore(500);
+				else if (caller->getIdentity() == IID_WATER_SPURT)
+				{
+					if (p->getIdentity() == IID_PROTESTER)
+						increaseScore(100);
+					else if (p->getIdentity() == IID_HARD_CORE_PROTESTER)
+						increaseScore(250);
+				}
+			}
+			else
+			{
+				p->setAnnoyed(true);
+				playSound(SOUND_PROTESTER_ANNOYED);
+			}
 			interacted = true;
 			break;
 		}
@@ -789,9 +823,9 @@ std::string StudentWorld::formatDisplayText(int score, int level, int lives,
 	d_level = "Lvl: " + prependCharToStringToSize(to_string(level), ' ', 2);
 	d_lives = "Lives: " + prependCharToStringToSize(to_string(lives), ' ', 1);
 
-	int hp = health / PLAYER_START_HEALTH * 100.00; //start health is max health
+	int hp = health / PLAYER_START_HEALTH * 100; //start health is max health
 	//should convert double on right to (truncated) int on left.
-	d_health = "Hlth: " + prependCharToStringToSize(to_string(hp), ' ', 3) + '%';
+	d_health = "Hlth: " + prependCharToStringToSize(to_string(health*10), ' ', 3) + '%';
 
 	d_squirts = "Wtr: " + prependCharToStringToSize(to_string(squirts), ' ', 2);
 	d_gold = "Gld: " + prependCharToStringToSize(to_string(gold), ' ', 2);
@@ -822,17 +856,18 @@ bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Directi
 	CoordType x, y;
 	caller->sendLocation(x, y);
 
-	if (isInvalidLocation(x, y)) //if trying to go outside possible gridspace, bad
-	{
-		caller->moveTo(caller->getX(), caller->getY()); //make it 'move' in place for animation
-		return false;
-	}
+
 
 	//bool transformed = caller->sendEffectiveLocation(x_t, y_t, moveDir); //causes problems when approaching from the left
 
 	bool result = tryToMoveFromLocation(x, y, caller->getDirection());
 		//return false;
 
+	if (isInvalidLocation(x, y)) //if trying to go outside possible gridspace, bad
+	{
+		caller->moveTo(caller->getX(), caller->getY()); //make it 'move' in place for animation
+		return false;
+	}
 
 
 	if(result)
@@ -919,6 +954,24 @@ GraphObject::Direction StudentWorld::canITurnAndMove(const Actor* caller) const
 		return (pDirs[rand() % pDirs.size()]);
 
 
+}
+
+bool StudentWorld::bribeEnemy(const Actor* caller) const
+{
+	CoordType x, y;
+	caller->sendLocation(x, y);
+
+	for (int i = 0; i < m_actors.size(); i++)
+	{
+		Actor* p = m_actors[i];
+		if (isActorAffectedByActor(caller, m_actors[i], INTERACTED) && m_actors[i]->whatGroupAmI() == enemies)
+		{
+			m_actors[i]->bribeMe();
+			return true;
+		}
+	}
+
+	return false;
 }
 
 
@@ -1110,6 +1163,8 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 	return GraphObject::right;
 
 	std::queue<Coord> s;
+	std::vector<GraphObject::Direction> steps; //will store correct steps to leave,
+											//give total number of steps with size()
 	
 	char a[X_UPPER_BOUND][Y_UPPER_BOUND];
 
@@ -1148,6 +1203,7 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 
 		c = s.front();
 		s.pop();
+		steps.erase(steps.begin()); //removes first element, corresponding to the first Coord
 		x = c.m_x, y = c.m_y;
 		a[x][y] = BREADCRUMB;
 
@@ -1157,6 +1213,7 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 		{
 			Coord d(x + LEFT_DIR, y); //push the Coordinate to the queue
 			s.push(d);
+
 		}
 		//repeat thought process for all four cardinal directions
 		if (a[x][y + DOWN_DIR] == GOAL)
@@ -1191,6 +1248,22 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 
 }
 
+int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
+{
+	int i = 0;
+	while (x_actor != x_goal || y_actor != y_goal)
+	{
+		GraphObject::Direction d = HowToGetFromLocationToGoal(x_actor, y_actor, x_goal, y_goal);
+		if (d != GraphObject::none)
+		{
+			i++;
+			moveCoordsInDirection(x_actor, y_actor, d);
+		}
+		//then it calls the maze-solving algorithm again and again, until it reaches the goal
+	}
+
+	return i;
+}
 
 bool StudentWorld::isThereABoulderAt(CoordType x, CoordType y) const
 {
@@ -1226,7 +1299,7 @@ bool StudentWorld::amIFacingFrackMan(const Actor* caller) const
 		//return whether, it's in the above rectangle of (x_p > x_c, y_p-dy <= y_c <= y_p + dy)
 		return (x_p >= x_c && (y_p - dy) <= y_c && y_c <= (y_p + dy));
 	case GraphObject::left:
-		return (x_p =< x_c && (y_p - dy) <= y_c && y_c <= (y_p + dy));
+		return (x_p <= x_c && (y_p - dy) <= y_c && y_c <= (y_p + dy));
 	case GraphObject::down:
 		return ((x_p - dx) <= x_c && x_c <= (x_p + dx) && y_p <= y_c);
 	case GraphObject::up:

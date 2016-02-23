@@ -257,7 +257,7 @@ public:
 
 	GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const;
 
-
+	int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const;
 
 	bool StudentWorld::isThereSpaceForAnActorHere(CoordType x, CoordType y) const;
 
@@ -279,6 +279,8 @@ public:
 
 
 	bool tryToMoveFromLocation(CoordType& x, CoordType& y, const GraphObject::Direction moveDir) const;
+
+	bool StudentWorld::bribeEnemy(const Actor* caller) const;
 
 
 	void StudentWorld::moveCoordsInDirection(CoordType& x, CoordType& y, GraphObject::Direction dir) const;
@@ -320,6 +322,7 @@ private:
 	int m_numberOfTicksToWaitBetweenEnemySpawns;
 	int m_targetEnemyNumber;
 	int m_probabilityHardcoreSpawn;
+	int m_numEnemies;
 	
 	//GraphObject::Direction** m_howToLeave;
 

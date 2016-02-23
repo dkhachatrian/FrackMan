@@ -352,15 +352,38 @@ int Protester::doSomething()
 	if (isDead())
 		return DEAD;
 
+	if (didIDie()) //maybe from Boulder or somethings
+		m_currentRestTick = 0;
+
+
+	if (amIAnnoyed())
+	{
+		if (m_annoyedRestTick < max(50, 100 - getWorld()->getLevel() * 10))
+		{
+			m_annoyedRestTick++;
+			return STATIONARY;
+		}
+		else
+		{
+			m_annoyedRestTick = 0;
+			setAnnoyed(false);
+		}
+	}
+
 	Direction dir = none;
 
 	//determine if Protester will rest this turn, or get closer to resting
-	if (m_currentRestTick % m_restTicks == 0)
+	if (m_currentRestTick % m_restTicks == (m_restTicks - 1))
 	{
-		setProtesterState(resting);
 		m_currentRestTick = 0;
+		return STATIONARY;
 	}
 	else m_currentRestTick++;
+
+	// Gold always acts on Protester, even as he's leaving
+
+
+
 
 
 	if (getProtesterState() != resting)
@@ -394,7 +417,7 @@ int Protester::doSomething()
 		if (m_currentCoolDownTick % m_coolDownPeriod == 0)
 		{
 			setProtesterState(OK);
-			resetTick(m_currentCoolDownTick);
+			m_currentCoolDownTick = 0;
 		}
 		return STATIONARY;
 		break;
@@ -454,7 +477,7 @@ int Protester::doSomething()
 				{
 					setDir(d);
 					rollNumberOfTimesToMoveInCurrentDirection();
-					resetTick(m_currentNonrestTick);
+					m_currentNonrestTick = 0;
 				}
 			}
 		}
@@ -481,16 +504,70 @@ int Protester::doSomething()
 
 }
 
-
-
 GraphObject::Direction Protester::tryToGetToFrackMan() const
 {
 	return getWorld()->directLineToFrackMan(this);
 }
 
+void Protester::bribeMe()
+{
+	getWorld()->increaseScore(25);
+	setProtesterState(leaving);
+}
+
+void Protester::performGiveUpAction()
+{
+	m_pState = leaving;
+	setAnnoyed(false); //have him started moving
+	getWorld()->playSound(SOUND_PROTESTER_GIVE_UP);
+}
+
+
+//thankfully, the rest tick for being bribed as a Hardcore Protester
+//is the same as being annoyed as a regular Protester
+//so can recycle everything in Protester::doSomething() by having bribeMe() do something different, namely
 
 
 
+void HardcoreProtester::bribeMe()
+{
+	getWorld()->increaseScore(50);
+	setAnnoyedTickCount(max(50, 100 - getWorld()->getLevel() * 10));
+	setAnnoyed(true);
+}
+// doesn't play the annoyed sound ('gold' sound handled by Gold object)
+//but gets him "annoyed" / stunned for appropriate amount of time
+
+
+//so now I don't need to do anything fancy
+int HardcoreProtester::doSomething()
+{
+	return Protester::doSomething();
+}
+
+void HardcoreProtester::setDetectionRange()
+{
+	m_detectionRange = 16 + getWorld()->getLevel() * 2;
+}
+
+GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
+{
+	if (getWorld()->distanceBetweenActors(this, getWorld()->getPlayer()) >= m_detectionRange) //no reason to use taxing method
+		Protester::tryToGetToFrackMan();
+
+	CoordType x_a, x_p, y_a, y_p;
+	sendLocation(x_a, y_a);
+	getWorld()->getPlayer()->sendLocation(x_p, y_p);
+
+	if (getWorld()->numberOfStepsFromLocationToGoal(x_a, y_a, x_p, y_p) <= m_detectionRange)
+	{
+		Direction d = getWorld()->tellMeHowToGetToMyGoal(this, x_p, y_p);
+		return d;
+	}
+	else return Protester::tryToGetToFrackMan();
+
+
+}
 
 
 
@@ -551,14 +628,11 @@ int Boulder::doSomething()
 			die();
 			return DEAD;
 		}
-		if(getWorld()->isLocationAffectedByGroup(getX(), getY(), player, INTERACTED))
+		if(getWorld()->isLocationAffectedByGroup(getX(), getY(), player, INTERACTED)
+			|| getWorld()->isLocationAffectedByGroup(getX(), getY(), enemies, INTERACTED)) //hurts player or enemies
 		{
 			getWorld()->attemptToInteractWithNearbyActors(this);
 			return MOVED; //this will finish the round
-		}
-		if (getWorld()->isLocationAffectedByGroup(getX(), getY(), enemies, INTERACTED))
-		{
-			//make them annoyed by 100 points
 		}
 		return MOVED;
 	}
@@ -598,7 +672,7 @@ int Goodie::doSomething()
 	if (getWorld()->isLocationAffectedByGroup(getX(), getY(), whoCanPickMeUp(), INTERACTED))
 	{
 		//getWorld()->playSound(SOUND_GOT_GOODIE);
-		getWorld()->increaseScore(giveScore());
+		//getWorld()->increaseScore(giveScore());
 		die();
 		return INTERACTED;
 	}
@@ -654,6 +728,7 @@ int Sonar::doSomething()
 	case INTERACTED:
 		getWorld()->playSound(SOUND_GOT_GOODIE);
 		getWorld()->getPlayer()->changeSonarBy(1);
+		getWorld()->increaseScore(giveScore());
 		break;
 	}
 
@@ -690,6 +765,7 @@ int Barrel::doSomething()
 	case INTERACTED:
 		getWorld()->playSound(SOUND_FOUND_OIL);
 		getWorld()->changeBarrelsLeftBy(-1);
+		getWorld()->increaseScore(giveScore());
 		break;
 	}
 
@@ -705,6 +781,7 @@ Gold::Gold(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_GOLD_F
 {
 	moveTo(x, y);
 	setDir(right);
+	//setGroupAs(gold); //lets Protesters know it's Gold
 
 	//determine visibility and type of gold
 	Actor* f = getWorld()->getPlayer();
@@ -746,8 +823,8 @@ int Gold::doSomething()
 		}
 		else
 		{
+			getWorld()->bribeEnemy(this); //bribeEnemy will determine point increase
 			getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
-			//tell the protestor he got bribed
 		}
 		break;
 	}
@@ -783,6 +860,7 @@ int Water::doSomething()
 	case INTERACTED:
 		getWorld()->playSound(SOUND_GOT_GOODIE);
 		getWorld()->getPlayer()->changeSquirtsBy(5);
+		getWorld()->increaseScore(giveScore());
 		break;
 	}
 
