@@ -865,7 +865,7 @@ void StudentWorld::moveCoordsInDirection(CoordType& x, CoordType& y, GraphObject
 }
 
 
-bool StudentWorld::tryToMoveFromLocation(CoordType& x, CoordType& y, GraphObject::Direction moveDir)
+bool StudentWorld::tryToMoveFromLocation(CoordType& x, CoordType& y, GraphObject::Direction moveDir) const
 {
 	CoordType x_old = x, y_old = y;
 
@@ -882,6 +882,45 @@ bool StudentWorld::tryToMoveFromLocation(CoordType& x, CoordType& y, GraphObject
 	// and no other Actors can move through Dirt
 	return (isThereSpaceForAnActorHere(x, y));
 }
+
+GraphObject::Direction StudentWorld::canITurnAndMove(const Actor* caller) const
+{
+	GraphObject::Direction cDir = caller->getDirection();
+	CoordType x, y;
+	caller->sendLocation(x, y);
+	std::vector<GraphObject::Direction> pDirs;
+
+	switch(cDir)
+	{
+	case GraphObject::left:
+	case GraphObject::right:
+		pDirs.push_back(GraphObject::up);
+		pDirs.push_back(GraphObject::down);
+		break;
+	case GraphObject::up:
+	case GraphObject::down:
+		pDirs.push_back(GraphObject::left);
+		pDirs.push_back(GraphObject::right);
+		break;
+	}
+
+	std::vector<GraphObject::Direction>::iterator it = pDirs.begin();
+
+	while (it != pDirs.end())
+	{
+		if (!StudentWorld::tryToMoveFromLocation(x, y, (*it)))
+			it = pDirs.erase(it);
+		else it++;
+	}
+
+	if (pDirs.size() == 0)
+		return GraphObject::none; //can't turn
+	else //otherwise, choose a random way to turn (or the only way to turn if there's only one way to turn)
+		return (pDirs[rand() % pDirs.size()]);
+
+
+}
+
 
 // Students:  Add code to this file (if you wish), StudentWorld.h, Actor.h and Actor.cpp
 
@@ -1071,9 +1110,10 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 	return GraphObject::right;
 
 	std::queue<Coord> s;
-
+	
 	char a[X_UPPER_BOUND][Y_UPPER_BOUND];
 
+	//determine all the spots the Actor cannot go
 	for (int i = 0; i < X_UPPER_BOUND; i++)
 		for (int j = 0; j < Y_UPPER_BOUND; j++)
 		{
@@ -1081,9 +1121,11 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 				a[i][j] = WALL;
 			else if (isThereABoulderAt(i, j))
 			{
-				for (int k = 0; k < SPRITE_WIDTH; k++)
-					for (int l = 0; l < SPRITE_HEIGHT; l++)
-						a[i + k][j + l] = WALL;
+				
+				for (int k = -DISTANCE_INTERACT; k < DISTANCE_INTERACT; k++)
+					for (int l = -DISTANCE_INTERACT; l < DISTANCE_INTERACT; l++)
+						if (distance(i, j, i + k, j + l) <= DISTANCE_INTERACT)
+							a[i + k][j + l] = WALL;
 			}
 			else a[i][j] = PATH;
 		}
@@ -1095,7 +1137,8 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 
 	CoordType x = c.m_x, y = c.m_y;
 
-	if (c.m_x == x_actor && c.m_y == y_actor)
+
+	if (c.m_x == x_actor && c.m_y == y_actor) //check to see if we're already there
 		return GraphObject::none;
 
 	s.push(c);
@@ -1108,14 +1151,14 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 		x = c.m_x, y = c.m_y;
 		a[x][y] = BREADCRUMB;
 
-		if (a[x + LEFT_DIR][y] == GOAL)
-			return GraphObject::right;
-		else if (a[x + LEFT_DIR][y] == PATH)
+		if (a[x + LEFT_DIR][y] == GOAL) //if the 'goal' Actor would have to move left to get to the 'caller' Actor
+			return GraphObject::right; //the caller should move the opposite of left, i.e., right
+		else if (a[x + LEFT_DIR][y] == PATH) //otherwise, if I can move there
 		{
-			Coord d(x + LEFT_DIR, y);
+			Coord d(x + LEFT_DIR, y); //push the Coordinate to the queue
 			s.push(d);
 		}
-
+		//repeat thought process for all four cardinal directions
 		if (a[x][y + DOWN_DIR] == GOAL)
 			return GraphObject::up;
 		else if (a[x][y + DOWN_DIR] == PATH)
@@ -1142,7 +1185,8 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 
 	}
 
-	//if made it here and didn't return already, can't make it back (which is worrisome...)
+	//if made it here and didn't return already, can't make it back
+	//(which is worrisome, since there should always be a way back...)
 	return GraphObject::none;
 
 }
@@ -1165,6 +1209,87 @@ bool StudentWorld::isThereABoulderAt(CoordType x, CoordType y) const
 }
 
 
+bool StudentWorld::amIFacingFrackMan(const Actor* caller) const
+{
+	GraphObject::Direction c_dir = caller->getDirection();
+	CoordType x_c, y_c, x_p, y_p;
+	caller->sendLocation(x_c, y_c);
+	m_player->sendLocation(x_p, y_p);
+
+	int dx = 4, dy = 4; //the 'cone' of vision will be a rectangle of coordinate +- d_coord
+
+	bool result = false;
+
+	switch (c_dir)
+	{
+	case GraphObject::right:
+		//return whether, it's in the above rectangle of (x_p > x_c, y_p-dy <= y_c <= y_p + dy)
+		return (x_p >= x_c && (y_p - dy) <= y_c && y_c <= (y_p + dy));
+	case GraphObject::left:
+		return (x_p =< x_c && (y_p - dy) <= y_c && y_c <= (y_p + dy));
+	case GraphObject::down:
+		return ((x_p - dx) <= x_c && x_c <= (x_p + dx) && y_p <= y_c);
+	case GraphObject::up:
+		return ((x_p - dx) <= x_c && x_c <= (x_p + dx) && y_p >= y_c);
+
+	case GraphObject::none:
+		exit(5); //bad...
+
+
+	}
+
+
+}
+
+//if in the same vertical/horizontal line and there's no dirt in the way, can see the FrackMan
+//if so, return Direction from caller to FrackMan
+//else return GraphObject::none
+GraphObject::Direction StudentWorld::directLineToFrackMan(const Actor* caller) const
+{
+	CoordType x_c, y_c, x_p, y_p;
+	caller->sendLocation(x_c, y_c);
+	m_player->sendLocation(x_p, y_p);
+
+	if (!(x_c == x_p || y_c == y_p)) //then no direct line of sight for sure
+		return GraphObject::none;
+
+	if (x_c == x_p) //on the same vertical line
+	{
+		for (int j = min(y_c, y_p); j < max(y_c, y_p); j++)
+		{
+			if (!isThereSpaceForAnActorHere(x_c, j) || isLocationAffectedByGroup(x_c, j, boulders, INTERACTED))
+			{
+				return GraphObject::none;
+			}
+		}
+		//if made it here, could make it to FrackMan
+		//determine direction
+		if (y_c < y_p)
+			return GraphObject::up;
+		else return GraphObject::down;
+	}
+
+	if (y_c == y_p) //on the same horizontal line
+	{
+		for (int i = min(x_c, x_p); i < max(x_c, x_p); i++)
+		{
+			if (!isThereSpaceForAnActorHere(i, y_c) || isLocationAffectedByGroup(i, y_c, boulders, INTERACTED))
+			{
+				return GraphObject::none;
+			}
+		}
+		//if made it here, could make it to FrackMan
+		//determine direction
+		if (x_c < x_p)
+			return GraphObject::right;
+		else return GraphObject::left;
+	}
+
+
+}
+
+
+
 // Helper functions
 
 double distance(int x1, int y1, int x2, int y2)
@@ -1182,6 +1307,13 @@ std::string prependCharToStringToSize(std::string s, char c, int size)
 
 	return s;
 }
+
+
+double angleBetweenTwoPoints(int x1, int y1, int x2, int y2)
+{
+	return (tan(double(x2 - x1) / (y2 - y1)));
+}
+
 
 
 int min(int x, int y)

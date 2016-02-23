@@ -10,6 +10,9 @@
 
 class StudentWorld;
 
+
+
+
 typedef int CoordType; //for coordinates of Actors
 typedef double LengthType; //for sprite sizes (in X and Y) of Actors
 
@@ -368,23 +371,39 @@ public:
 		changeHealthBy(5);
 		m_pState = OK;
 		m_restTicks = 4;
+		m_coolDownPeriod = 15;
+		m_turnPeriod = 200;
+		rollNumberOfTimesToMoveInCurrentDirection();
+		m_currentRestTick = 0;
+		m_currentNonrestTick = 0;
+		m_currentNonTurnedTick = 0;
+		m_currentCoolDownTick = 0;
 	}
 	virtual ~Protester() {};
 
 	virtual int doSomething();
+	virtual Direction tryToGetToFrackMan() const;
+	int getDirTimes() const { return m_numTimesCurrentDir; }
 
-
+	void resetTick(int& t) { t = 0; }
 
 	protesterState getProtesterState() const { return m_pState; }
 	void setProtesterState(protesterState s) { m_pState = s; }
-	bool canSeeFrackMan() const;
+	//Graph::Direction canSeeFrackMan() const;
+	void rollNumberOfTimesToMoveInCurrentDirection() { m_numTimesCurrentDir = (rand() % 53) + 8; }
+
 
 	bool isAnnoyed() const { return getHealth() <= 0; }
 
 private:
 	int m_restTicks;
-	int m_currentTick;
+	int m_currentRestTick;
+	int m_currentNonrestTick;
+	int m_currentNonTurnedTick;
+	int m_turnPeriod;
+	int m_currentCoolDownTick;
 	int m_coolDownPeriod;
+	int m_numTimesCurrentDir;
 	protesterState m_pState;
 	bool m_annoyed;
 };
@@ -525,7 +544,7 @@ private:
 };
 
 
-
+GraphObject::Direction generateRandomDirection();
 
 
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp

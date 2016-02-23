@@ -354,6 +354,21 @@ int Protester::doSomething()
 
 	Direction dir = none;
 
+	//determine if Protester will rest this turn, or get closer to resting
+	if (m_currentRestTick % m_restTicks == 0)
+	{
+		setProtesterState(resting);
+		m_currentRestTick = 0;
+	}
+	else m_currentRestTick++;
+
+
+	if (getProtesterState() != resting)
+	{
+		m_currentNonrestTick++;
+		//m_currentRestTick++;
+	}
+
 	switch (m_pState)
 	{
 	case leaving:
@@ -368,39 +383,110 @@ int Protester::doSomething()
 		return MOVED;
 		break;
 	case resting:
-		setProtesterState(OK);
+		if (didIDie())
+			setProtesterState(leaving);
+		else
+			setProtesterState(OK);
 		return STATIONARY;
 		//break;
 	case coolingDown:
-		m_currentTick++;
-		if (m_currentTick % m_coolDownPeriod == 0)
+		m_currentCoolDownTick++;
+		if (m_currentCoolDownTick % m_coolDownPeriod == 0)
 		{
 			setProtesterState(OK);
+			resetTick(m_currentCoolDownTick);
 		}
 		return STATIONARY;
 		break;
 	case OK:
-		
 
+		//attempt to yell at FrackMan
 
-
-		//start resting next tick
-		m_currentTick++;
-		if (m_currentTick % m_restTicks == (m_restTicks - 1))
+		//conveniently, DISCOVERED == 4 == shouting distance of Protester
+		if (getWorld()->isActorAffectedByGroup(this, player, DISCOVERED) && getWorld()->amIFacingFrackMan(this))
 		{
-			m_currentTick = 0;
-			setProtesterState(resting);
+			getWorld()->playSound(SOUND_PROTESTER_YELL);
+			getWorld()->getPlayer()->changeHealthBy(-2);
+			setProtesterState(coolingDown);
+			return STATIONARY;
 		}
+
+		//attempt to walk toward FrackMan intelligently (Direction and ability to see FrackMan being determined by the tryToGetToFrackMan() function)
+		if (!getWorld()->isActorAffectedByGroup(this, player, DISCOVERED))
+		{
+			Direction dir = tryToGetToFrackMan();
+
+			if (dir != none)
+			{
+				m_numTimesCurrentDir = 0;
+				setDir(dir);
+				bool result = DynamicObject::attemptMove(dir);
+				if (result)
+					return MOVED;
+				else exit(5); //there's a problem with a function here if result != true ...
+			}
+		}
+
+		//otherwise can't see FrackMan...
+
+		//walk in a Direction
+		//first determine the Direction
+		
+		if (getDirTimes() == 0)
+		{
+			Direction r_dir = generateRandomDirection();
+			CoordType x = getX(), y = getY();
+			int i = 0;
+			while (!getWorld()->tryToMoveFromLocation(x, y, r_dir) && i < 20) //shouldn't take more than 20 tries...
+			{
+				r_dir = generateRandomDirection();
+				i++;
+			}
+			setDir(r_dir);
+			rollNumberOfTimesToMoveInCurrentDirection();
+		}
+		else
+		{
+			if (m_currentNonrestTick > 200)
+			{
+				Direction d = getWorld()->canITurnAndMove(this);
+				if (d != none)
+				{
+					setDir(d);
+					rollNumberOfTimesToMoveInCurrentDirection();
+					resetTick(m_currentNonrestTick);
+				}
+			}
+		}
+
+
+		//then move
+		bool result = DynamicObject::attemptMove(getDirection());
+
+		if (!result)
+		{
+			m_numTimesCurrentDir = 0; //will make it re-roll for a new Direction next tick
+			return STATIONARY;
+		}
+		else return MOVED;
+
 
 		//do some stuff
 
 		break;
 	}
 
+
+
+
 }
 
 
 
+GraphObject::Direction Protester::tryToGetToFrackMan() const
+{
+	return getWorld()->directLineToFrackMan(this);
+}
 
 
 
@@ -702,4 +788,22 @@ int Water::doSomething()
 
 	return result;
 
+}
+
+
+
+GraphObject::Direction generateRandomDirection()
+{
+	int r = rand() % 4;
+	switch (r) 
+	{
+	case 0:
+		return GraphObject::up;
+	case 1:
+		return GraphObject::down;
+	case 2:
+		return GraphObject::left;
+	case 3:
+		return GraphObject::right;
+	}
 }

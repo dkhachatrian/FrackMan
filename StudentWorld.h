@@ -278,10 +278,14 @@ public:
 	bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int& ID);
 
 
-	bool tryToMoveFromLocation(CoordType& x, CoordType& y, const GraphObject::Direction moveDir);
+	bool tryToMoveFromLocation(CoordType& x, CoordType& y, const GraphObject::Direction moveDir) const;
 
 
 	void StudentWorld::moveCoordsInDirection(CoordType& x, CoordType& y, GraphObject::Direction dir) const;
+
+	bool StudentWorld::amIFacingFrackMan(const Actor* caller) const;
+	GraphObject::Direction StudentWorld::directLineToFrackMan(const Actor* caller) const;
+	GraphObject::Direction StudentWorld::canITurnAndMove(const Actor* caller) const;
 
 	//for debugging
 	void StudentWorld::setAllActorsAsVisible();
@@ -289,6 +293,8 @@ public:
 	bool isInvalidLocation(int x, int y) const { return (x < 0 || x > X_UPPER_BOUND || y < 0 || y > Y_UPPER_BOUND); }
 
 	int overlap(const Actor* a, const Actor* b) const;
+
+
 	bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const;
 	bool StudentWorld::isThereDirtInDirection(GraphObject::Direction dir, CoordType x, CoordType y, CoordType height, CoordType width) const;
 	bool StudentWorld::removeDirtFromLocation(const int& x, const int& y);
@@ -334,7 +340,9 @@ private:
 
 // Helper functions
 
+
 double distance(int x1, int y1, int x2, int y2);
+double angleBetweenTwoPoints(int x1, int y1, int x2, int y2);
 int min(int x, int y);
 int max(int x, int y);
 //int overlap(Actor* a, Actor* b);
