@@ -52,6 +52,7 @@ const int INVALID_IID = -1;
 enum Group { player, enemies, boulders, goodies, squirts, gold, bribes, anyone, na };
 
 
+
 struct Coord
 {
 	Coord(CoordType x, CoordType y)

@@ -64,7 +64,8 @@ StudentWorld::StudentWorld(std::string assetDir)
 	//m_barrelsLeft = -1;
 	//m_goldLeft = -1;
 	//m_bouldersLeft = -1;
-
+	m_dirts = nullptr;
+	m_player = nullptr;
 
 }
 
@@ -308,7 +309,8 @@ bool StudentWorld::cleanUpActorsAndFrackMan()
 	//then remove them all from the vector of Actor*
 	removeDeadActors();
 
-	delete m_player;
+	if(m_player != nullptr)
+		delete m_player;
 	/*
 	std::vector<Actor*>::iterator it = m_actors.begin();
 
@@ -1271,6 +1273,8 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 	//to obtain Direction, will have to work backwards, from Goal to Actor
 	// When they finally match, return the opposite direction of that used to reach the Actor
 	Coord c(x_goal, y_goal);
+
+
 	a[x_actor][y_actor] = GOAL;
 	a[x_goal][y_goal] = BREADCRUMB;
 
@@ -1291,7 +1295,7 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 	CoordType x = c.m_x, y = c.m_y;
 
 
-	if (c.m_x == x_actor && c.m_y == y_actor) //check to see if we're already there
+	if (x == x_actor && y == y_actor) //check to see if we're already there
 		return GraphObject::none;
 
 	s.push(c);
