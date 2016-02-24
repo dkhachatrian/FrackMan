@@ -20,6 +20,8 @@ const int X_UPPER_BOUND = VIEW_WIDTH - SPRITE_WIDTH; //cannot reach upper bound.
 const int Y_UPPER_BOUND = VIEW_HEIGHT - SPRITE_HEIGHT; //== 60
 
 const int PLAYER_START_HEALTH = 10;
+const int PROTESTER_START_HEALTH = 5;
+const int HARDCORE_PROTESTER_START_HEALTH = 20;
 const int PLAYER_START_SQUIRTS = 5;
 
 //for the moveTo functions
@@ -41,7 +43,7 @@ const int EXISTS_GAP = 1;
 
 const int INVALID_IID = -1;
 
-enum Group { player, enemies, boulders, goodies, gold, anyone, na };
+enum Group { player, enemies, boulders, goodies, squirts, gold, bribes, anyone, na };
 
 
 struct Coord
@@ -54,6 +56,11 @@ struct Coord
 
 	CoordType m_x, m_y;
 };
+
+
+const int DAMAGE_BOULDER = -100;
+const int DAMAGE_SQUIRT = -2;
+const int DAMAGE_YELL = -2;
 
 
 const double NORMAL_IMAGE_SIZE = 1;
@@ -74,6 +81,12 @@ const unsigned int DEPTH_DIRT = 3;
 //const string DIRT_ID = "dirt";
 
 
+// ticks values
+
+const int TICK_SQUIRT = 4;
+
+
+
 
 //doSomething() return values
 const int DEAD = -1;
@@ -83,6 +96,7 @@ const int STATIONARY = 2;
 const int ANNOYED = 3;
 const int DISCOVERED = 4;
 const int PLACED = 5;
+const int CAN_YELL = 6;
 
 
 
@@ -105,19 +119,16 @@ public:
 		//moveTo(x, y);
 		m_depth = depth;
 		m_sw = sw;
-		m_doITick = false; //most things don't think
+		m_doITick = false; //most things don't tick
 		m_ticksLeft = -1;
-		m_is_solid = solidity; //everything except Boulders is not solid
 		m_width = imageSize * SPRITE_WIDTH;
 		m_height = imageSize * SPRITE_HEIGHT;
 		setVisibility(true);
 		m_isDead = false;
 		m_dir = right;
 		m_group = na;
-		m_hp = 0;
 		m_id = IID;
 
-		m_annoyed = false;
 		//m_visible = true; //by default
 		//setVisible(true); //by default
 	}
@@ -133,17 +144,28 @@ public:
 		setDirection(d);
 		m_dir = d;
 	}
-	virtual void performGiveUpAction() {};
-	virtual void bribeMe() {}; //only protesters get bribed. Done to allow int
+	//virtual void performGiveUpAction() {};
+	//virtual void bribeMe() {}; //only protesters get bribed. Done to allow int
 	
-	bool didIDie() const { return m_hp <= 0; }
-
 	virtual ~Actor() { setVisible(false); }
 
 	Group whatGroupAmI() const { return m_group; }
 
 	//doSomething()
-	virtual int doSomething() = 0;
+	virtual int doSomething();
+	virtual void attemptToInteractWithActors();
+	virtual void interactWithActor(const Actor* other, double distanceOfInteraction);
+	virtual void respondToPlayer(double distanceOfInteraction) {};
+	virtual void respondToEnemy(double distanceOfInteraction) {};
+	virtual void respondToSquirt(double distanceOfInteraction) {};
+	virtual void respondToBoulder(double distanceOfInteraction) {};
+	virtual void respondToGoodie(double distanceOfInteraction) {};
+	virtual void respondToBribe(double distanceOfInteraction) {};
+
+	virtual void Actor::performTickAction();
+
+
+
 	//virtual int doSomething();
 	
 	//gives bottom-left corner (i.e. what's returned by getX/Y)
@@ -154,7 +176,6 @@ public:
 	}
 
 	StudentWorld* getWorld() const { return m_sw; }
-	bool isSolid() const{ return m_is_solid; }
 	int getIdentity() const{ return m_id; }
 	int getWidth() const { return m_width; }
 	int getHeight() const { return m_height; }
@@ -162,11 +183,10 @@ public:
 	bool isVisible()  const { return m_visible; }
 	int getDepth() const { return m_depth; }
 
-	int getHealth() const { return m_hp; }
-	void changeHealthBy(int x) { m_hp += x; }
 
 
-	bool isThereDirtNextToMe() const;
+	bool Actor::isThereDirtNextToMeInDirection(Direction dir) const;
+	bool Actor::isThereDirtNextToMeInCurrentDirection() const;
 
 	//to be used for overlap function
 	double getMaxLength() const;
@@ -184,19 +204,15 @@ public:
 
 	Corner relativeLocationTo(const Actor* other) const;
 
-	virtual bool shouldITick() const { return false; } //most things don't tick
+	bool doITick() const { return m_doITick; }
 
 	void die() { m_isDead = true; }
 
-
-	void setAnnoyed(bool x) { m_annoyed = x; }
-	bool amIAnnoyed() { return m_annoyed; }
 
 
 protected:
 	void setIdentityAs(int id) {m_id = id;}
 	void setGroupAs(Group g) { m_group = g; }
-	void setHealth(int hp) { m_hp = hp; }
 	//helper functions
 
 	//ticking
@@ -207,14 +223,11 @@ protected:
 	int getTickNumber() const { return m_ticksLeft; }
 
 
-
-
 	void setVisibleFlag(bool x) { m_visible = x; }
-	void setSolidityAs(bool state) { m_is_solid = state; }
+
 
 private:
 	StudentWorld* m_sw;
-	bool m_is_solid;
 	int m_id;
 	CoordType m_width;
 	CoordType m_height;
@@ -226,9 +239,7 @@ private:
 	Direction m_dir;
 	Group m_group;
 	//GraphObject m_go;
-	int m_hp;
 
-	bool m_annoyed;
 };
 
 //only class with image size different from the rest
@@ -269,7 +280,10 @@ class DynamicObject :public Actor
 public:
 	DynamicObject(int IID, unsigned int depth, StudentWorld* sw, CoordType x = -1, CoordType y = -1, double imageSize = NORMAL_IMAGE_SIZE):
 		Actor(IID, depth, sw, imageSize, x, y)
-	{};
+	{
+
+		m_hp = 0;
+	};
 
 	virtual ~DynamicObject()
 	{};
@@ -280,9 +294,12 @@ public:
 	//bool setDir(Direction dir) {}; //covered by GraphObject::setDirection(Direction d);
 
 
+	int getHealth() const { return m_hp; }
+	void changeHealthBy(int x) { m_hp += x; }
 
+	bool didIDie() const { return m_hp <= 0; }
 
-
+	
 
 
 	//changes x_s,y_s (copies of the coordinates of Actor who called it)
@@ -293,6 +310,14 @@ public:
 
 	// Does not change anything
 	virtual bool moveMatchesDir(const Direction moveDir) const { return (GraphObject::getDirection() == moveDir); }
+
+protected:
+
+	void setHealth(int hp) { m_hp = hp; }
+
+private:
+
+	int m_hp;
 
 };
 
@@ -309,6 +334,10 @@ public:
 	virtual ~Squirt() {};
 
 	virtual int doSomething();
+
+	virtual void respondToEnemy(double distanceOfInteraction) {};
+	virtual void respondToBoulder(double distanceOfInteraction) {};
+
 
 };
 
@@ -371,6 +400,8 @@ private:
 
 
 
+
+
 enum protesterState { leaving, resting, coolingDown, OK };
 
 const int REST_TICK_NORMAL = 4;
@@ -383,7 +414,7 @@ public:
 	{
 		setVisibility(true);
 		setDir(left);
-		setHealth(5);
+		setHealth(PROTESTER_START_HEALTH);
 		setGroupAs(enemies);
 		m_pState = OK;
 		m_restTicks = REST_TICK_NORMAL;
@@ -394,7 +425,8 @@ public:
 		m_currentNonrestTick = 0;
 		m_currentNonTurnedTick = 0;
 		m_currentCoolDownTick = 0;
-		m_annoyedRestTick = 0; 
+		m_annoyedRestTick = 0;
+		m_annoyed = false;
 	}
 	virtual ~Protester() {};
 
@@ -407,7 +439,8 @@ public:
 	int getDirTimes() const { return m_numTimesCurrentDir; }
 
 	//void resetTick(int& t) { t = 0; }
-
+	
+	void setAnnoyedTickStatus(bool x) { m_annoyed = x; }
 	void setAnnoyedTickCount(int t) { m_annoyedRestTick = t; }
 
 	protesterState getProtesterState() const { return m_pState; }
@@ -416,6 +449,20 @@ public:
 	void rollNumberOfTimesToMoveInCurrentDirection() { m_numTimesCurrentDir = (rand() % 53) + 8; }
 
 	virtual void performGiveUpAction();
+	virtual void Protester::performAnnoyedAction();
+
+	virtual void Protester::respondToPlayer(double distanceOfInteraction);
+	void respondToSquirt(double distanceOfInteraction);
+	void Protester::respondToBoulder(double distanceOfInteraction);
+
+
+	void setAnnoyed(bool x) { m_annoyed = x; }
+	bool amIAnnoyed() { return m_annoyed; }
+
+	void setCurrentRestTick(int x) { m_currentRestTick = 0; }
+
+	virtual void Protester::getHurt(int damage);
+
 
 protected:
 
@@ -432,6 +479,8 @@ private:
 	int m_annoyedRestTick;
 	protesterState m_pState;
 
+	bool m_annoyed;
+
 };
 
 
@@ -440,8 +489,8 @@ class HardcoreProtester :public Protester
 public:
 	HardcoreProtester(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_HARD_CORE_PROTESTER):Protester(x, y, sw, IID)
 	{
-		m_bribed = false;
-		setHealth(20);
+		//m_bribed = false;
+		setHealth(HARDCORE_PROTESTER_START_HEALTH);
 		setDetectionRange();
 	}
 	virtual int doSomething();
@@ -454,7 +503,7 @@ public:
 protected:
 	void setDetectionRange();
 private:
-	bool m_bribed;
+	//bool m_bribed;
 	int m_detectionRange;
 };
 
@@ -474,11 +523,32 @@ public:
 };
 
 
+
+
+
 //from spec (double-check though!)
 const double DISTANCE_INTERACT = 3;
 const double DISTANCE_DISCOVER = 4;
+const double DISTANCE_YELL = 4;
 const double DISTANCE_PLACEMENT = 6;
 const double DISTANCE_USE_SONAR = 12;
+
+#include <map>
+std::map<double, int> DISTANCE_ACTION_MAP;
+
+void initializeDistanceActionMap()
+{
+	DISTANCE_ACTION_MAP[DISTANCE_INTERACT] = INTERACTED;
+	DISTANCE_ACTION_MAP[DISTANCE_DISCOVER] = DISCOVERED;
+	//DISTANCE_ACTION_MAP[DISTANCE_YELL] = CAN_YELL;
+	//DISTANCE_ACTION_MAP[DISTANCE_PLACEMENT] = PLACED;
+	DISTANCE_ACTION_MAP[DISTANCE_USE_SONAR] = DISCOVERED; //DISTANCE_USE_SONAR only passed in with StudentWorld::letPlayerUseSonar()
+
+
+}
+
+
+const std::vector<double> DISTANCES = { DISTANCE_INTERACT, DISTANCE_DISCOVER };
 
 
 const int SCORE_INVALID = -1;
@@ -486,6 +556,7 @@ const int SCORE_SONAR = 75;
 const int SCORE_BARREL = 1000;
 const int SCORE_GOLD_FRACKMAN = 10;
 const int SCORE_GOLD_PROTESTER = 25;
+const int SCORE_GOLD_HARDCORE_PROTESTER = 50;
 const int SCORE_WATER_POOL = 100;
 
 class Goodie :public StaticObject
@@ -505,6 +576,8 @@ public:
 	virtual ~Goodie() { };
 
 	virtual int doSomething();
+
+	//virtual void respondToPlayer() = 0;
 
 	//picking up Goodies gives a score...
 	int giveScore() const { return m_score; }
@@ -528,6 +601,9 @@ public:
 	virtual ~Sonar() {};
 
 	virtual int doSomething();
+
+	virtual void respondToPlayer(double distanceOfInteraction);
+
 
 private:
 
@@ -558,16 +634,16 @@ class Gold :public Goodie
 public:
 	Gold(CoordType x, CoordType y, StudentWorld* sw, int score, int IID);
 
-	bool wasDroppedByFrackMan() const { return m_frack; }
+	virtual ~Gold() {};
+
 	virtual int doSomething();
 
 private:
-	bool m_frack;
-	int m_ticksLeft;
+
 };
 
 
-enum state { stable, waiting, falling };
+enum boulderState { stable, waiting, falling };
 const int WAIT_TIME_BOULDER = 30;
 class Boulder : public DynamicObject
 {
@@ -577,10 +653,15 @@ public:
 	virtual ~Boulder() {};
 	virtual int doSomething();
 
-	state checkState() const { return m_state; }
+	boulderState checkState() const { return m_state; }
+
+	virtual void performTickAction();
+
+	void setBoulderState(boulderState x) { m_state = x; }
+
 
 private:
-	state m_state;
+	boulderState m_state;
 	int m_ticksLeft;
 	bool m_haveWaited;
 };

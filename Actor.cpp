@@ -13,10 +13,83 @@
 //		return -1;
 //}
 
-bool Actor::isThereDirtNextToMe() const
+int Actor::doSomething()
 {
-	return getWorld()->isThereDirtInDirectionOfActor(this);
+	if (isDead())
+		return DEAD;
+
+	attemptToInteractWithActors(); //where all the interacting takes place
+
+	if (doITick())
+	{
+		countDownATick();
+
+		if (getTickNumber() == 0)
+		{
+			//die();
+			performTickAction();
+			return DEAD;
+		}
+	}
+
+	return 42; //not useful at the moment
+
 }
+
+
+void Actor::performTickAction()
+{
+	die();
+}
+
+
+void Actor::attemptToInteractWithActors()
+{
+	getWorld()->attemptToInteractWithNearbyActors(this);
+}
+
+void Actor::interactWithActor(const Actor* other, double distanceOfInteraction)
+{
+	switch (other->whatGroupAmI())
+	{
+	case player:
+		respondToPlayer(distanceOfInteraction);
+		break;
+	case enemies:
+		respondToEnemy(distanceOfInteraction);
+		break;
+	case boulders:
+		respondToBoulder(distanceOfInteraction);
+		break;
+	case goodies:
+		respondToGoodie(distanceOfInteraction);
+		break;
+	case bribes:
+		respondToBribe(distanceOfInteraction);
+	default:
+		break;
+	}
+
+
+
+
+}
+
+
+
+
+bool Actor::isThereDirtNextToMeInDirection(Direction dir) const
+{
+	return getWorld()->isThereDirtInDirectionOfActor(this, dir);
+}
+
+bool Actor::isThereDirtNextToMeInCurrentDirection() const
+{
+	return getWorld()->isThereDirtInDirectionOfActor(this, getDirection());
+
+}
+
+
 
 
 //Gives "effective" (x,y) based on sprite size and current direction
@@ -90,6 +163,7 @@ void Actor::putAtSpriteCorner(Corner c, CoordType& x, CoordType& y) const
 
 	return;
 }
+
 
 // Returns whether a coordinate is in an Actor's "hitbox"
 bool Actor::isInsideMySprite(const CoordType& x, const CoordType& y) const
@@ -180,15 +254,18 @@ Squirt::Squirt(CoordType x, CoordType y, StudentWorld* sw, Direction dir) :Dynam
 	setVisibility(true);
 	setDir(dir);
 	setTickStatus(true);
+	setGroupAs(squirts);
 	setTickNumber(4);
 }
 
 int Squirt::doSomething()
 {
+	Actor::doSomething();
+
+	//check to see if I died after interacting with other Actors
 	if (isDead())
 		return DEAD;
-	
-	
+
 
 	countDownATick();
 	if (getTickNumber() == 0)
@@ -197,17 +274,9 @@ int Squirt::doSomething()
 		return DEAD;
 	}
 
-	bool result = getWorld()->attemptToInteractWithNearbyActors(this);
-
-	if (result)
-	{
-		die();
-		return DEAD;
-	}
-
 	//otherwise, keep on trucking
-	result = DynamicObject::attemptMove(getDirection());
-	if (!result)
+	bool couldMove = DynamicObject::attemptMove(getDirection());
+	if (!couldMove)
 	{
 		die();
 		return DEAD; //dies if it hits a wall, dirt, or boulder
@@ -217,6 +286,16 @@ int Squirt::doSomething()
 
 }
 
+
+void Squirt::respondToEnemy(double distanceOfInteraction)
+{
+	if (distanceOfInteraction <= DISTANCE_INTERACT)
+		die(); //enemy class will deal with damage and sound effect
+}
+void Squirt::respondToBoulder(double distanceOfInteraction)
+{
+	respondToEnemy(distanceOfInteraction); //does the same thing in this case!
+}
 
 
 // FrackMan functions
@@ -292,7 +371,7 @@ bool FrackMan::attemptMove(const Direction dir)
 bool FrackMan::attemptToDig()
 {
 	bool result = false;
-	if (isThereDirtNextToMe())
+	if (isThereDirtNextToMeInCurrentDirection()) //have already checked that movement matches direction in FrackMan::attemptMove
 		result = getWorld()->removeDirtForFrackMan();
 
 	return result;
@@ -347,6 +426,7 @@ bool FrackMan::attemptToUseWaterGun()
 
 // Protester functions
 
+// have to deal with several ticks -- cannot rely on Actor::doSomething() to handle the tick (can handle asking the StudentWorld to interact though)
 int Protester::doSomething()
 {
 	if (isDead())
@@ -515,11 +595,59 @@ void Protester::bribeMe()
 	setProtesterState(leaving);
 }
 
+
+void Protester::respondToPlayer(double distanceOfInteraction)
+{
+	if (distanceOfInteraction == DISTANCE_YELL && getWorld()->amIFacingFrackMan())
+	{
+		getWorld()->getPlayer()->getHurt(DAMAGE_YELL);
+		getWorld()->playSound(SOUND_PROTESTER_YELL);
+	}
+}
+
+void Protester::respondToSquirt(double distanceOfInteraction)
+{
+	if (distanceOfInteraction <= DISTANCE_INTERACT)
+	{
+		getHurt(DAMAGE_SQUIRT);
+	}
+}
+
+void Protester::respondToBoulder(double distanceOfInteraction)
+{
+	if (distanceOfInteraction <= DISTANCE_INTERACT)
+	{
+		getHurt(DAMAGE_BOULDER);
+	}
+}
+
+
+void Protester::getHurt(int damage)
+{
+	changeHealthBy(damage);
+	if (didIDie())
+	{
+		performGiveUpAction();
+	}
+	else
+	{
+		performAnnoyedAction();
+	}
+}
+
+
 void Protester::performGiveUpAction()
 {
-	m_pState = leaving;
+	setProtesterState(leaving);
 	setAnnoyed(false); //have him started moving
 	getWorld()->playSound(SOUND_PROTESTER_GIVE_UP);
+}
+
+void Protester::performAnnoyedAction()
+{
+	getWorld()->playSound(SOUND_PROTESTER_ANNOYED);
+	setAnnoyed(true);
+	setAnnoyedTickCount(max(50, 100 - getWorld()->getLevel() * 10));
 }
 
 
@@ -592,55 +720,48 @@ Boulder::Boulder(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_BOULD
 
 int Boulder::doSomething()
 {
+	Actor::doSomething();
+
+
 	if (isDead())
 		return DEAD;
+
+
 
 	switch (m_state)
 	{
 		//progression of states is only stable -> waiting -> falling (-> death)
 	case stable:
-		if (!isThereDirtNextToMe())
+		if (!isThereDirtNextToMeInCurrentDirection())
 		{
-			m_state = waiting;
-			m_haveWaited = true;
-			setTickNumber(30);
+			setBoulderState(waiting);
+			setTickStatus(true);
+			setTickNumber(WAIT_TIME_BOULDER); //now Actor::doSomething() will count down the tick until it Boulder::performTickAction()'s
 		}
 		return STATIONARY;
 		break; //not necessary
 	case waiting:
-		countDownATick();
-		if (getTickNumber() == 0)
-		{
-			m_state = falling;
-			getWorld()->playSound(SOUND_FALLING_ROCK);
-		}
-		return STATIONARY;
+		//handled in Actor::doSomething()
 		break; //not necessary
 	case falling:
-		if (isThereDirtNextToMe()) //before moving down through the dirt, check if there is any dirt
+		//now it's moving
+		bool couldMove = DynamicObject::attemptMove(down);
+		if (!couldMove) //hit the bottom of the stage or dirt (or another boulder(?))
 		{
 			die();
 			return DEAD;
 		}
-		bool couldMove = attemptMove(down);
-		if (!couldMove) //hit the bottom of the stage
-		{
-			die();
-			return DEAD;
-		}
-		if(getWorld()->isLocationAffectedByGroup(getX(), getY(), player, INTERACTED)
-			|| getWorld()->isLocationAffectedByGroup(getX(), getY(), enemies, INTERACTED)) //hurts player or enemies
-		{
-			getWorld()->attemptToInteractWithNearbyActors(this);
-			return MOVED; //this will finish the round
-		}
-		return MOVED;
 	}
 
-
+	return 42;
 }
 
+void Boulder::performTickAction()
+{
+	setBoulderState(falling);
+	getWorld()->playSound(SOUND_FALLING_ROCK);
 
+}
 
 
 
@@ -652,46 +773,39 @@ int Boulder::doSomething()
 // NOTE: DOES NOT PLAY A SOUND
 int Goodie::doSomething()
 {
+	Actor::doSomething();
+
 	if (isDead())
 	{
-		//die();
+		getWorld()->playSound(SOUND_GOT_GOODIE);
+		getWorld()->increaseScore(giveScore());
 		return DEAD;
 	}
 
-	if (doITick())
-	{
-		countDownATick();
+	return 42;
 
-		if (getTickNumber() == 0)
-		{
-			die();
-			return DEAD;
-		}
-	}
-
-	if (getWorld()->isLocationAffectedByGroup(getX(), getY(), whoCanPickMeUp(), INTERACTED))
-	{
-		//getWorld()->playSound(SOUND_GOT_GOODIE);
-		//getWorld()->increaseScore(giveScore());
-		die();
-		return INTERACTED;
-	}
-
-	if (!isVisible() && (getWorld()->isLocationAffectedByGroup(getX(), getY(), whoCanPickMeUp(), DISCOVERED)))
-	{
-		setVisibility(true);
-		return DISCOVERED;
-	}
-
-	//if nothing happened, stays stationary
-
-	return STATIONARY;
 }
 
 
+int Goodie::respondToPlayer(double distanceOfInteraction)
+{
+	int interaction = DISTANCE_ACTION_MAP[distanceOfInteraction];
 
+	switch (interaction)
+	{
+	case INTERACTED:
+		interactWithPlayer();
+		break;
+	case DISCOVERED:
+		becomeDiscoveredByPlayer();
+		break;
+	}
+}
 
+void Goodie::interactWithPlayer()
+{
 
+}
 
 
 
@@ -735,6 +849,16 @@ int Sonar::doSomething()
 	return result;
 }
 
+void Sonar::respondToPlayer(double distanceOfInteraction)
+{
+
+
+	switch (distanceOfInteraction)
+	{
+		getWorld()->getPlayer()->changeSonarBy(1);
+		die();
+	}
+}
 
 
 
@@ -754,22 +878,18 @@ Barrel::Barrel(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_BA
 
 int Barrel::doSomething()
 {
-	int result = Goodie::doSomething(); //does most of the stuff,
+	Actor::doSomething(); //does most of the stuff,
 										//including making a sound or killing the Goodie or becoming visible if appropriate
 
-	if (result == DEAD)
-		return DEAD;
-
-	switch (result)
+	if (isDead())
 	{
-	case INTERACTED:
-		getWorld()->playSound(SOUND_FOUND_OIL);
-		getWorld()->changeBarrelsLeftBy(-1);
-		getWorld()->increaseScore(giveScore());
-		break;
+		getWorld()->playSound(SOUND_FOUND_OIL); //different sound played for oil compared to other goodies
+		getWorld()->getPlayer()->changeGoldBy(1);
+		getWorld()->increaseScore(SCORE_GOLD_FRACKMAN);
+		return DEAD;
 	}
 
-	return result;
+	return 42;
 }
 
 
@@ -791,7 +911,8 @@ Gold::Gold(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_GOLD_F
 		setTickStatus(true);
 		setTickNumber(100);
 		setVisibility(true);
-		setPickUpGroup(enemies);
+		//setPickUpGroup(enemies);
+		setGroupAs(bribes);
 		setScore(SCORE_GOLD_PROTESTER);
 	}
 	else
@@ -799,35 +920,39 @@ Gold::Gold(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_GOLD_F
 		m_frack = false;
 		setTickStatus(false);
 		setVisibility(false);
-		setPickUpGroup(player);
+		setGroupAs(goodies);
+		//setPickUpGroup(player);
 		setScore(SCORE_GOLD_FRACKMAN);
 	}
 
 }
 
+
+
+
 // NOT FINISHED. Return after implementing/designing Protester classes
 int Gold::doSomething()
 {
-	int result = Goodie::doSomething();
 
-	if (result == DEAD)
-		return DEAD;
+	Actor::doSomething(); //does most of the stuff,
+						  //including making a sound or killing the Goodie or becoming visible if appropriate
 
-	switch (result)
+	if (isDead())
 	{
-	case INTERACTED:
-		if (!wasDroppedByFrackMan())
+		if (whatGroupAmI() == goodies)
 		{
 			getWorld()->playSound(SOUND_GOT_GOODIE);
 			getWorld()->getPlayer()->changeGoldBy(1);
+			getWorld()->increaseScore(SCORE_GOLD_FRACKMAN);
+			return DEAD;
 		}
 		else
-		{
-			getWorld()->bribeEnemy(this); //bribeEnemy will determine point increase
-			getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
-		}
-		break;
+			return DEAD; //let enemy handle the fact that it got bribed
 	}
+
+	return 42;
+
+
 }
 
 
@@ -855,9 +980,8 @@ int Water::doSomething()
 	if (result == DEAD)
 		return DEAD;
 
-	switch (result)
+	if(isDead())
 	{
-	case INTERACTED:
 		getWorld()->playSound(SOUND_GOT_GOODIE);
 		getWorld()->getPlayer()->changeSquirtsBy(5);
 		getWorld()->increaseScore(giveScore());

@@ -80,6 +80,7 @@ void StudentWorld::setAllActorsAsVisible()
 
 int StudentWorld::init()
 {
+	initializeDistanceActionMap();
 	initDirt();
 	setUpDirt();
 
@@ -482,12 +483,12 @@ bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int
 
 //isThereDirtInDirectionOfActor;
 
-bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const
+bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller, GraphObject::Direction dir) const
 {
 	CoordType x, y;
 	caller->sendLocation(x, y);
 
-	return isThereDirtInDirection(caller->getDirection(), x, y, caller->getWidth(), caller->getHeight());
+	return isThereDirtInDirection(dir, x, y, caller->getWidth(), caller->getHeight());
 
 	//if (y == 0)
 	//	return false; //there can't be dirt under it if it's at the bottom!
@@ -729,6 +730,45 @@ bool StudentWorld::removeDirtForFrackMan()
 // increases score if it kills enemies in the appropriate manner
 bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
 {
+	CoordType x1, y1, x2, y2;
+	m_player->sendLocation(x1, y1);
+
+	//check against player
+	for (int j = 0; j < m_actors.size(); j++)
+	{
+		m_actors[j]->sendLocation(x2, y2);
+		for (int k = 0; k < DISTANCES.size(); k++) //DISTANCES only includes INTERACT and DISCOVER, the two that all actors can potentially respond to
+		{
+			if (distance(x1, y1, x2, y2) < DISTANCES[k])
+			{
+				m_player->interactWithActor(m_actors[j], DISTANCES[k]);
+				m_actors[j]->interactWithActor(m_player, DISTANCES[k]);
+			}
+		}
+	}
+
+	//check against all other Actors
+	for (int i = 0; i < m_actors.size(), i++)
+	{
+		m_actors[i]->sendLocation(x1, y1);
+		for (int j = 0; j < m_actors.size(); j++)
+		{
+			m_actors[j]->sendLocation(x2, y2);
+			if (i != j) //we don't want the Actor interacting with itself
+			{
+				for (int k = 0; k < DISTANCES.size(); k++)
+				{
+					if (distance(x1, y1, x2, y2) < DISTANCES[k])
+					{
+						m_actors[i]r->interactWithActor(m_actors[j], DISTANCES[k]);
+						m_actors[j]->interactWithActor(m_actors[i], DISTANCES[k]);
+					}
+				}
+			}
+		}
+	}
+
+
 	int damage = 0;
 
 	switch (caller->getIdentity())
@@ -979,7 +1019,7 @@ bool StudentWorld::bribeEnemy(const Actor* caller) const
 
 //a is always a dynamicObject 
 
-
+/*
 //overlap compares the bottom-left corner of each sprite to determine overlap (should always be a valid comparison)
 int StudentWorld::overlap(const Actor* a, const Actor* b) const
 {
@@ -1067,8 +1107,9 @@ int StudentWorld::overlap(const Actor* a, const Actor* b) const
 	
 	//if either dx or dy are less
 
-	*/
+	
 }
+*/
 
 double StudentWorld::distanceBetweenActors(const Actor* a, const Actor* b) const
 {

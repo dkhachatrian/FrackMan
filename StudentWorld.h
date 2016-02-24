@@ -297,7 +297,7 @@ public:
 	int overlap(const Actor* a, const Actor* b) const;
 
 
-	bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const;
+	bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller, GraphObject::Direction dir) const;
 	bool StudentWorld::isThereDirtInDirection(GraphObject::Direction dir, CoordType x, CoordType y, CoordType height, CoordType width) const;
 	bool StudentWorld::removeDirtFromLocation(const int& x, const int& y);
 	void StudentWorld::removeDirtForBoulder(const Actor* a);
