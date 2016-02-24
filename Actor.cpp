@@ -2,6 +2,21 @@
 #include "StudentWorld.h"
 
 
+#include <map>
+std::map<double, int> DISTANCE_ACTION_MAP;
+
+void initializeDistanceActionMap()
+{
+	DISTANCE_ACTION_MAP[DISTANCE_INTERACT] = INTERACTED;
+	DISTANCE_ACTION_MAP[DISTANCE_DISCOVER] = DISCOVERED;
+	//DISTANCE_ACTION_MAP[DISTANCE_YELL] = CAN_YELL;
+	//DISTANCE_ACTION_MAP[DISTANCE_PLACEMENT] = PLACED;
+	DISTANCE_ACTION_MAP[DISTANCE_USE_SONAR] = DISCOVERED; //DISTANCE_USE_SONAR only passed in with StudentWorld::letPlayerUseSonar()
+}
+
+
+
+
 //int max(int x, int y);
 // Actor functions
 
@@ -48,6 +63,8 @@ void Actor::attemptToInteractWithActors()
 	getWorld()->attemptToInteractWithNearbyActors(this);
 }
 
+
+/*
 void Actor::interactWithActor(const Actor* other, double distanceOfInteraction)
 {
 	switch (other->whatGroupAmI())
@@ -74,7 +91,7 @@ void Actor::interactWithActor(const Actor* other, double distanceOfInteraction)
 
 
 }
-
+*/
 
 
 
@@ -258,10 +275,19 @@ Squirt::Squirt(CoordType x, CoordType y, StudentWorld* sw, Direction dir) :Dynam
 	setTickNumber(4);
 }
 
+
 int Squirt::doSomething()
 {
 	Actor::doSomething();
+	bool result = attemptMove(getDirection());
 
+	if (!result)
+	{
+		die();
+		return 41;
+	}
+	return 42;
+	/*
 	//check to see if I died after interacting with other Actors
 	if (isDead())
 		return DEAD;
@@ -283,19 +309,24 @@ int Squirt::doSomething()
 	}
 	//otherwise, it somehow made it through the gauntlet of checks
 	return MOVED;
-
+	*/
 }
 
 
-void Squirt::respondToEnemy(double distanceOfInteraction)
+void Squirt::respondToBoulder(Boulder* boulder, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 		die(); //enemy class will deal with damage and sound effect
 }
-void Squirt::respondToBoulder(double distanceOfInteraction)
+void Squirt::respondToEnemy(Protester* enemy, double distanceOfInteraction)
 {
-	respondToEnemy(distanceOfInteraction); //does the same thing in this case!
+	if (distanceOfInteraction <= DISTANCE_INTERACT)
+	{
+		//enemy->getHurt(DAMAGE_SQUIRT);
+		die();
+	}
 }
+
 
 
 // FrackMan functions
@@ -440,6 +471,9 @@ void FrackMan::getHurt(int damage)
 // have to deal with several ticks -- cannot rely on Actor::doSomething() to handle the tick (can handle asking the StudentWorld to interact though)
 int Protester::doSomething()
 {
+	if(getProtesterState() != leaving)
+		Actor::doSomething();
+
 	if (isDead())
 		return DEAD;
 
@@ -609,7 +643,7 @@ void Protester::bribeMe()
 
 void Protester::respondToPlayer(double distanceOfInteraction)
 {
-	if (distanceOfInteraction == DISTANCE_YELL && getWorld()->amIFacingFrackMan())
+	if (distanceOfInteraction == DISTANCE_YELL && getWorld()->amIFacingFrackMan(this))
 	{
 		getWorld()->getPlayer()->getHurt(DAMAGE_YELL);
 		getWorld()->playSound(SOUND_PROTESTER_YELL);
@@ -632,7 +666,7 @@ void Protester::respondToSquirt(Squirt* squirt, double distanceOfInteraction)
 
 void Protester::respondToBoulder(double distanceOfInteraction)
 {
-	if (distanceOfInteraction <= DISTANCE_INTERACT)
+	if (distanceOfInteraction <= DISTANCE_INTERACT && getProtesterState() != leaving)
 	{
 		getHurt(DAMAGE_BOULDER);
 
@@ -648,8 +682,14 @@ void Protester::respondToBribe(Gold* bribe, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
-		
+		startToLeave();
 	}
+}
+
+void Protester::startToLeave()
+{
+	setAnnoyed(false); //have him start moving
+	setProtesterState(leaving);
 }
 
 
@@ -669,16 +709,18 @@ void Protester::getHurt(int damage)
 
 void Protester::performGiveUpAction()
 {
-	setProtesterState(leaving);
-	setAnnoyed(false); //have him started moving
+
 	getWorld()->playSound(SOUND_PROTESTER_GIVE_UP);
+	setAnnoyed(false);
+	setProtesterState(leaving);
 }
 
 void Protester::performAnnoyedAction()
 {
 	getWorld()->playSound(SOUND_PROTESTER_ANNOYED);
 	setAnnoyed(true);
-	setAnnoyedTickCount(max(50, 100 - getWorld()->getLevel() * 10));
+	setAnnoyedTickCount(0);
+	//setAnnoyedTickCount(max(50, 100 - getWorld()->getLevel() * 10));
 }
 
 
@@ -744,10 +786,9 @@ Boulder::Boulder(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_BOULD
 	//moveTo(x, y);
 
 	m_state = stable;
-	m_haveWaited = false;
+	//m_haveWaited = false;
 	setDir(down);
 	setVisibility(true);
-	setSolidityAs(true);
 	setGroupAs(boulders);
 }
 
@@ -796,14 +837,22 @@ void Boulder::performTickAction()
 
 }
 
-void Boulder::respondToEnemy(DynamicObject* other)
+void Boulder::respondToEnemy(Protester* enemy, double distanceOfInterest)
+{
+	if (getBoulderState() != falling)
+		return;
+
+
+}
+
+void Boulder::respondToPlayer(FrackMan* player, double distanceOfInterest)
 {
 	if (getBoulderState() != falling)
 		return;
 
 	else
 	{
-
+		player->getHurt(DAMAGE_BOULDER);
 	}
 }
 
@@ -817,7 +866,7 @@ int Goodie::doSomething()
 {
 	Actor::doSomething();
 
-
+	return 42;
 }
 
 
@@ -828,7 +877,7 @@ void Goodie::respondToPlayer(FrackMan* player, double distanceOfInteraction)
 	switch (interaction)
 	{
 	case INTERACTED:
-		interactWithPlayer();
+		interactWithPlayer(player, distanceOfInteraction);
 		break;
 	case DISCOVERED:
 		becomeDiscoveredByPlayer();
@@ -861,7 +910,7 @@ Sonar::Sonar(CoordType x, CoordType y, StudentWorld * sw):
 	//setTickNumber(5);
 }
 
-
+/*
 int Sonar::doSomething()
 {
 	int result = Goodie::doSomething(); //does most of the stuff,
@@ -881,6 +930,7 @@ int Sonar::doSomething()
 
 	return result;
 }
+*/
 
 void Sonar::interactWithPlayer(FrackMan* player, double distanceOfInteraction)
 {
@@ -909,15 +959,18 @@ Barrel::Barrel(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_BA
 int Barrel::doSomething()
 {
 	Goodie::doSomething();
+	return 42;
 }
 
 void Barrel::interactWithPlayer(FrackMan* player, double distanceOfInteraction)
 {
-	//player->changeSonarBy(1);
-	getWorld()->changeBarrelsLeftBy(-1);
-	getWorld()->playSound(SOUND_FOUND_OIL);
-	getWorld()->increaseScore(giveScore());
-	die();
+	if (distanceOfInteraction <= DISTANCE_INTERACT)
+	{
+		getWorld()->changeBarrelsLeftBy(-1);
+		getWorld()->playSound(SOUND_FOUND_OIL);
+		getWorld()->increaseScore(giveScore());
+		die();
+	}
 }
 
 
@@ -935,22 +988,18 @@ Gold::Gold(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_GOLD_F
 	Actor* f = getWorld()->getPlayer();
 	if (f->getX() == x && f->getY() == y) //if FrackMan is initially where the gold is constructed, he dropped it
 	{
-		m_frack = true;
 		setTickStatus(true);
 		setTickNumber(100);
 		setVisibility(true);
 		//setPickUpGroup(enemies);
 		setGroupAs(bribes);
-		setScore(SCORE_GOLD_PROTESTER);
 	}
 	else
 	{
-		m_frack = false;
 		setTickStatus(false);
 		setVisibility(false);
 		setGroupAs(goodies);
 		//setPickUpGroup(player);
-		setScore(SCORE_GOLD_FRACKMAN);
 	}
 
 }
@@ -965,18 +1014,7 @@ int Gold::doSomething()
 	Actor::doSomething(); //does most of the stuff,
 						  //including making a sound or killing the Goodie or becoming visible if appropriate
 
-	if (isDead())
-	{
-		if (whatGroupAmI() == goodies)
-		{
 
-			return DEAD;
-		}
-		else
-		{
-			return DEAD; //let enemy handle the fact that it got bribed
-		}
-	}
 	return 42;
 }
 
@@ -989,6 +1027,7 @@ void Gold::interactWithPlayer(FrackMan* player, double distanceOfInteraction)
 		getWorld()->playSound(SOUND_GOT_GOODIE);
 		player->changeGoldBy(1);
 		getWorld()->increaseScore(SCORE_GOLD_FRACKMAN);
+		die();
 		return;
 	}
 }
@@ -997,7 +1036,11 @@ void Gold::interactWithPlayer(FrackMan* player, double distanceOfInteraction)
 void Gold::respondToEnemy(Protester* enemy, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT && whatGroupAmI() == bribes)
-		die(); //otherwise, it doesn't respond to enemy
+	{
+		getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
+		die();
+	}
+	//otherwise, it doesn't respond to enemy
 }
 
 
@@ -1016,24 +1059,17 @@ Water::Water(CoordType x, CoordType y, StudentWorld* sw) :
 	//setTickNumber(50);
 }
 
-int Water::doSomething()
+
+
+void Water::interactWithPlayer(FrackMan* player, double distanceOfInteraction)
 {
-	int result = Goodie::doSomething(); //does most of the stuff,
-										//including making a sound or killing the Goodie or becoming visible if appropriate
-
-	if (result == DEAD)
-		return DEAD;
-
-	if(isDead())
+	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
 		getWorld()->playSound(SOUND_GOT_GOODIE);
-		getWorld()->getPlayer()->changeSquirtsBy(5);
+		player->changeSquirtsBy(5);
 		getWorld()->increaseScore(giveScore());
-		break;
+		die();
 	}
-
-	return result;
-
 }
 
 
@@ -1053,3 +1089,4 @@ GraphObject::Direction generateRandomDirection()
 		return GraphObject::right;
 	}
 }
+

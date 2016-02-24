@@ -65,7 +65,6 @@ StudentWorld::StudentWorld(std::string assetDir)
 	//m_goldLeft = -1;
 	//m_bouldersLeft = -1;
 
-	//initDirt();
 
 }
 
@@ -80,8 +79,9 @@ void StudentWorld::setAllActorsAsVisible()
 
 int StudentWorld::init()
 {
-	initializeDistanceActionMap();
+
 	initDirt();
+	initializeDistanceActionMap();
 	setUpDirt();
 
 	// reset FrackMan's inventory after every level
@@ -729,7 +729,7 @@ bool StudentWorld::removeDirtForFrackMan()
 // Tells the caller which interaction functions to call, and which distance/action to do
 // Each Actor will call this function when it doSomething()'s, so both 'respondToXXX' functions will be called by the end of a tick
 //		(though only one way is done per caller)
-bool StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
+void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 {
 
 	CoordType x1, y1, x2, y2;
@@ -741,9 +741,11 @@ bool StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 
 	for (int k = 0; k < DISTANCES.size(); k++) //DISTANCES only includes INTERACT and DISCOVER, the two that all actors can potentially respond to
 	{
+		if (caller == m_player)
+			break; //don't match player with itself
 		if (distance(x1, y1, x2, y2) < DISTANCES[k])
 		{
-			caller->respondToPlayer(m_player, DISTANCES[k];
+			caller->respondToPlayer(m_player, DISTANCES[k]);
 		}
 	}
 
@@ -802,7 +804,7 @@ bool StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 		}
 	}
 
-
+	/*
 	int damage = 0;
 
 	switch (caller->getIdentity())
@@ -857,6 +859,9 @@ bool StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 	}
 
 	return interacted;
+	*/
+
+	return;
 }
 
 
@@ -1029,7 +1034,7 @@ GraphObject::Direction StudentWorld::canITurnAndMove(const Actor* caller) const
 
 
 }
-
+/*
 bool StudentWorld::bribeEnemy(const Actor* caller) const
 {
 	CoordType x, y;
@@ -1047,7 +1052,7 @@ bool StudentWorld::bribeEnemy(const Actor* caller) const
 
 	return false;
 }
-
+*/
 
 // Students:  Add code to this file (if you wish), StudentWorld.h, Actor.h and Actor.cpp
 
@@ -1228,14 +1233,15 @@ GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Actor* caller,
 }
 
 #include <queue>
+#include <iostream>
 const char WALL = 'X';
 const char BREADCRUMB = '#';
 const char PATH = '.';
-const char GOAL = '%';
+const char GOAL = '!';
 
 GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
 {
-	return GraphObject::right;
+	//return GraphObject::right;
 
 	std::queue<Coord> s;
 	std::vector<GraphObject::Direction> steps; //will store correct steps to leave,
@@ -1244,8 +1250,9 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 	char a[X_UPPER_BOUND][Y_UPPER_BOUND];
 
 	//determine all the spots the Actor cannot go
-	for (int i = 0; i < X_UPPER_BOUND; i++)
-		for (int j = 0; j < Y_UPPER_BOUND; j++)
+	
+	for (int j = 0; j < Y_UPPER_BOUND + 1; j++)
+		for (int i = 0; i < X_UPPER_BOUND + 1; i++)
 		{
 			if (isThereDirtAt(i, j))
 				a[i][j] = WALL;
@@ -1260,10 +1267,26 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 			else a[i][j] = PATH;
 		}
 
+
 	//to obtain Direction, will have to work backwards, from Goal to Actor
 	// When they finally match, return the opposite direction of that used to reach the Actor
 	Coord c(x_goal, y_goal);
 	a[x_actor][y_actor] = GOAL;
+	a[x_goal][y_goal] = BREADCRUMB;
+
+	//debug map
+
+	//flipped vertically to 'match' actual case
+	for (int j = Y_UPPER_BOUND; j > 0; j--)
+	{
+		for (int i = 0; i < X_UPPER_BOUND + 1; i++)
+		{
+			std::cout << a[i][j];
+		}
+		std::cout << std::endl;
+	}
+
+
 
 	CoordType x = c.m_x, y = c.m_y;
 
@@ -1272,6 +1295,7 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 		return GraphObject::none;
 
 	s.push(c);
+	steps.push_back(GraphObject::none);
 
 	while (!s.empty())
 	{

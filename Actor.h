@@ -9,6 +9,12 @@
 //#include "GameWorld.h" //need to access getKey() in FrackMan class
 
 class StudentWorld;
+class Protester;
+class Goodie;
+class Gold;
+class FrackMan;
+class Squirt;
+class Boulder;
 
 
 
@@ -113,7 +119,7 @@ public:
 		m_height = imageSize * SPRITE_HEIGHT;
 	}
 	*/
-	Actor( int IID,  unsigned int depth, StudentWorld* sw, double imageSize, CoordType x = -1, CoordType y = -1, bool solidity = false):
+	Actor( int IID,  unsigned int depth, StudentWorld* sw, double imageSize, CoordType x = -1, CoordType y = -1):
 		GraphObject(IID, x, y, right, imageSize, depth)
 	{
 		//moveTo(x, y);
@@ -154,7 +160,7 @@ public:
 	//doSomething()
 	virtual int doSomething();
 	virtual void attemptToInteractWithActors();
-	virtual void interactWithActor(const Actor* other, double distanceOfInteraction);
+	//virtual void interactWithActor(const Actor* other, double distanceOfInteraction);
 	virtual void respondToPlayer(FrackMan* player, double distanceOfInteraction) {};
 	virtual void respondToEnemy(Protester* enemy, double distanceOfInteraction) {};
 	virtual void respondToSquirt(Squirt* squirt, double distanceOfInteraction) {};
@@ -204,7 +210,7 @@ public:
 
 	Corner relativeLocationTo(const Actor* other) const;
 
-	bool doITick() const { return m_doITick; }
+//	bool doITick() const { return m_doITick; }
 
 	void die() { m_isDead = true; }
 
@@ -335,8 +341,8 @@ public:
 
 	virtual int doSomething();
 
-	virtual void respondToEnemy(double distanceOfInteraction) {};
-	virtual void respondToBoulder(double distanceOfInteraction) {};
+	virtual void respondToEnemy(Protester* enemy, double distanceOfInteraction);
+	virtual void respondToBoulder(Boulder* boulder, double distanceOfInteraction);
 
 
 };
@@ -366,7 +372,7 @@ public:
 	virtual bool attemptMove(const Direction dir);
 
 	//for the purposes of compiling...
-	virtual bool isAnnoyed() { return false; }
+	//virtual bool isAnnoyed() { return false; }
 	//virtual int attemptAnnoyedAction() { return 0; }
 	//virtual bool shouldIBeAnnoyed() const { return false; }
 
@@ -456,8 +462,8 @@ public:
 	virtual void Protester::respondToPlayer(double distanceOfInteraction);
 	virtual void respondToSquirt(Squirt* squirt, double distanceOfInteraction);
 	virtual void Protester::respondToBoulder(double distanceOfInteraction);
-	virtual void Protester::respondToBribe(Gold* bribe, double distanceOfInteraction)
-
+	virtual void Protester::respondToBribe(Gold* bribe, double distanceOfInteraction);
+	void Protester::startToLeave();
 
 
 	void setAnnoyed(bool x) { m_annoyed = x; }
@@ -500,6 +506,7 @@ public:
 	virtual int doSomething();
 
 
+	virtual void respondToBribe(Gold* bribe, double distanceOfInteraction);
 
 	virtual Direction tryToGetToFrackMan() const;
 	virtual void bribeMe();
@@ -511,22 +518,6 @@ private:
 	int m_detectionRange;
 };
 
-//entirely made to have a branch to oppose DynamicObject -- doesn't actually add much in terms of features
-// (at least, that I can think of at the moment...)
-class StaticObject :public Actor
-{
-public:
-	StaticObject(int IID, unsigned int depth, StudentWorld* sw, CoordType x, CoordType y, double imageSize = NORMAL_IMAGE_SIZE, bool solidity = false) :
-		Actor(IID, depth, sw, imageSize, x, y)
-	{
-
-	}
-	
-	virtual ~StaticObject() {};
-
-};
-
-
 
 
 
@@ -537,19 +528,9 @@ const double DISTANCE_YELL = 4;
 const double DISTANCE_PLACEMENT = 6;
 const double DISTANCE_USE_SONAR = 12;
 
-#include <map>
-std::map<double, int> DISTANCE_ACTION_MAP;
-
-void initializeDistanceActionMap()
-{
-	DISTANCE_ACTION_MAP[DISTANCE_INTERACT] = INTERACTED;
-	DISTANCE_ACTION_MAP[DISTANCE_DISCOVER] = DISCOVERED;
-	//DISTANCE_ACTION_MAP[DISTANCE_YELL] = CAN_YELL;
-	//DISTANCE_ACTION_MAP[DISTANCE_PLACEMENT] = PLACED;
-	DISTANCE_ACTION_MAP[DISTANCE_USE_SONAR] = DISCOVERED; //DISTANCE_USE_SONAR only passed in with StudentWorld::letPlayerUseSonar()
 
 
-}
+void initializeDistanceActionMap();
 
 
 const std::vector<double> DISTANCES = { DISTANCE_INTERACT, DISTANCE_DISCOVER };
@@ -563,11 +544,11 @@ const int SCORE_GOLD_PROTESTER = 25;
 const int SCORE_GOLD_HARDCORE_PROTESTER = 50;
 const int SCORE_WATER_POOL = 100;
 
-class Goodie :public StaticObject
+class Goodie :public Actor
 {
 public:
-	Goodie(int IID,  StudentWorld* sw, CoordType x, CoordType y, int score = SCORE_INVALID, unsigned int depth = DEPTH_GOODIE, Group canPickMeUp = player) :
-		StaticObject(IID, depth, sw, x, y)
+	Goodie(int IID,  StudentWorld* sw, CoordType x, CoordType y, int score = SCORE_INVALID, unsigned int depth = DEPTH_GOODIE) :
+		Actor(IID, depth, sw, NORMAL_IMAGE_SIZE, x, y)
 	{
 		setVisibility(false);
 		//setVisible(false); //most start off invisible
@@ -582,7 +563,7 @@ public:
 	virtual int doSomething();
 
 	virtual void respondToPlayer(FrackMan* player, double distanceOfInteraction);
-	virtual void Goodie::interactWithPlayer() = 0;
+	virtual void Goodie::interactWithPlayer(FrackMan* player, double distanceOfInteraction) = 0;
 	virtual void Goodie::becomeDiscoveredByPlayer();
 	virtual void respondToEnemy(Protester* enemy, double distanceOfInteraction) {};
 
@@ -610,7 +591,7 @@ public:
 	Sonar(CoordType x, CoordType y, StudentWorld* sw);
 	virtual ~Sonar() {};
 
-	virtual int doSomething();
+	//virtual int doSomething();
 
 	virtual void interactWithPlayer(FrackMan* player, double distanceOfInteraction);
 
@@ -637,9 +618,8 @@ class Water :public Goodie
 {
 public:
 	Water(CoordType x, CoordType y, StudentWorld* sw);
+	virtual ~Water() {};
 
-
-	virtual int doSomething();
 
 	virtual void interactWithPlayer(FrackMan* player, double distanceOfInteraction);
 
@@ -671,6 +651,9 @@ class Boulder : public DynamicObject
 public:
 	Boulder(CoordType x, CoordType y, StudentWorld* sw, int IID, unsigned int depth);
 
+	void respondToPlayer(FrackMan* player, double distanceOfInterest);
+
+
 	virtual ~Boulder() {};
 	virtual int doSomething();
 
@@ -679,7 +662,7 @@ public:
 	virtual void performTickAction();
 
 	void setBoulderState(boulderState x) { m_state = x; }
-	virtual void Boulder::respondToEnemy(DynamicObject* other);
+	virtual void Boulder::respondToEnemy(Protester* enemy, double distanceOfInterest);
 
 
 
@@ -687,7 +670,7 @@ public:
 private:
 	boulderState m_state;
 	int m_ticksLeft;
-	bool m_haveWaited;
+	//bool m_haveWaited;
 };
 
 
