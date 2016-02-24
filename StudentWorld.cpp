@@ -726,43 +726,46 @@ bool StudentWorld::removeDirtForFrackMan()
 }
 
 
-// This will undoubtedly need to change in structure once I implement the protesters...
-// increases score if it kills enemies in the appropriate manner
-bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
+// Tells the caller which interaction functions to call, and which distance/action to do
+// Each Actor will call this function when it doSomething()'s, so both 'respondToXXX' functions will be called by the end of a tick
+//		(though only one way is done per caller)
+bool StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 {
-	CoordType x1, y1, x2, y2;
-	m_player->sendLocation(x1, y1);
 
-	//check against player
-	for (int j = 0; j < m_actors.size(); j++)
+	CoordType x1, y1, x2, y2;
+	caller->sendLocation(x1, y1);
+
+
+	//first check against other players
+	m_player->sendLocation(x2, y2);
+
+	for (int k = 0; k < DISTANCES.size(); k++) //DISTANCES only includes INTERACT and DISCOVER, the two that all actors can potentially respond to
 	{
-		m_actors[j]->sendLocation(x2, y2);
-		for (int k = 0; k < DISTANCES.size(); k++) //DISTANCES only includes INTERACT and DISCOVER, the two that all actors can potentially respond to
+		if (distance(x1, y1, x2, y2) < DISTANCES[k])
 		{
-			if (distance(x1, y1, x2, y2) < DISTANCES[k])
-			{
-				m_player->interactWithActor(m_actors[j], DISTANCES[k]);
-				m_actors[j]->interactWithActor(m_player, DISTANCES[k]);
-			}
+			caller->respondToPlayer(m_player, DISTANCES[k];
 		}
 	}
 
+
+
 	//check against all other Actors
-	for (int i = 0; i < m_actors.size(), i++)
+	for (int j = 0; j < m_actors.size(); j++)
 	{
-		m_actors[i]->sendLocation(x1, y1);
-		for (int j = 0; j < m_actors.size(); j++)
+		m_actors[j]->sendLocation(x2, y2);
+		if (caller != m_actors[j]) //we don't want the Actor interacting with itself
 		{
-			m_actors[j]->sendLocation(x2, y2);
-			if (i != j) //we don't want the Actor interacting with itself
+			for (int k = 0; k < DISTANCES.size(); k++)
 			{
-				for (int k = 0; k < DISTANCES.size(); k++)
+				if (distance(x1, y1, x2, y2) < DISTANCES[k])
 				{
-					if (distance(x1, y1, x2, y2) < DISTANCES[k])
+					switch (m_actors[j]->whatGroupAmI())
 					{
-						m_actors[i]r->interactWithActor(m_actors[j], DISTANCES[k]);
-						m_actors[j]->interactWithActor(m_actors[i], DISTANCES[k]);
+					case enemies:
+						caller->respondToEnemy(m_actors[j], DISTANCES[k]); //can't regain specific pointer information from m_actors...
 					}
+					
+					//->interactWithActor(m_actors[j], DISTANCES[k]);
 				}
 			}
 		}

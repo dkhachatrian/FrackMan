@@ -422,6 +422,17 @@ bool FrackMan::attemptToUseWaterGun()
 
 }
 
+void FrackMan::getHurt(int damage)
+{
+	changeHealthBy(damage);
+	if (didIDie())
+	{
+		getWorld()->playSound(SOUND_PLAYER_GIVE_UP);
+		die();
+	}
+}
+
+
 
 
 // Protester functions
@@ -610,6 +621,12 @@ void Protester::respondToSquirt(double distanceOfInteraction)
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
 		getHurt(DAMAGE_SQUIRT);
+
+		if (didIDie())
+		{
+			performGiveUpAction();
+			getWorld()->increaseScore(100); //score for killing with squirt
+		}
 	}
 }
 
@@ -618,6 +635,12 @@ void Protester::respondToBoulder(double distanceOfInteraction)
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
 		getHurt(DAMAGE_BOULDER);
+
+		if (didIDie())
+		{
+			performGiveUpAction();
+			getWorld()->increaseScore(500); //score for bonking with boulder
+		}
 	}
 }
 
@@ -649,6 +672,8 @@ void Protester::performAnnoyedAction()
 	setAnnoyed(true);
 	setAnnoyedTickCount(max(50, 100 - getWorld()->getLevel() * 10));
 }
+
+
 
 
 //thankfully, the rest tick for being bribed as a Hardcore Protester
@@ -763,7 +788,16 @@ void Boulder::performTickAction()
 
 }
 
+void Boulder::respondToEnemy(DynamicObject* other)
+{
+	if (getBoulderState() != falling)
+		return;
 
+	else
+	{
+
+	}
+}
 
 
 

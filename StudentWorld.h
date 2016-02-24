@@ -168,7 +168,7 @@ public:
 
 	}
 
-	bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller);
+	bool StudentWorld::attemptToInteractWithNearbyActors(Actor* caller);
 
 
 	void StudentWorld::letPlayerDropGold();

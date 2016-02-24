@@ -155,12 +155,12 @@ public:
 	virtual int doSomething();
 	virtual void attemptToInteractWithActors();
 	virtual void interactWithActor(const Actor* other, double distanceOfInteraction);
-	virtual void respondToPlayer(double distanceOfInteraction) {};
-	virtual void respondToEnemy(double distanceOfInteraction) {};
-	virtual void respondToSquirt(double distanceOfInteraction) {};
-	virtual void respondToBoulder(double distanceOfInteraction) {};
-	virtual void respondToGoodie(double distanceOfInteraction) {};
-	virtual void respondToBribe(double distanceOfInteraction) {};
+	virtual void respondToPlayer(FrackMan* player, double distanceOfInteraction) {};
+	virtual void respondToEnemy(Protester* enemy, double distanceOfInteraction) {};
+	virtual void respondToSquirt(Squirt* squirt, double distanceOfInteraction) {};
+	virtual void respondToBoulder(Boulder* boulder, double distanceOfInteraction) {};
+	virtual void respondToGoodie(Goodie* goodie, double distanceOfInteraction) {};
+	virtual void respondToBribe(Gold* bribe, double distanceOfInteraction) {};
 
 	virtual void Actor::performTickAction();
 
@@ -300,7 +300,7 @@ public:
 	bool didIDie() const { return m_hp <= 0; }
 
 	
-
+	virtual void getHurt(int damage) {}; //not all DynamicObjects get hurt, but both FrackMan and the Protesters do
 
 	//changes x_s,y_s (copies of the coordinates of Actor who called it)
 	// to where the Actor wants to go.
@@ -384,6 +384,8 @@ public:
 	void changeSonarBy(int x) { m_sonar += x; }
 	bool attemptToUseSonar();
 
+	virtual void getHurt(int damage);
+
 
 	bool attemptToDig();
 	//bool removeDirt(const Direction dir, const int& x, const int& y);
@@ -461,7 +463,7 @@ public:
 
 	void setCurrentRestTick(int x) { m_currentRestTick = 0; }
 
-	virtual void Protester::getHurt(int damage);
+	virtual void getHurt(int damage);
 
 
 protected:
@@ -653,11 +655,14 @@ public:
 	virtual ~Boulder() {};
 	virtual int doSomething();
 
-	boulderState checkState() const { return m_state; }
+	boulderState getBoulderState() const { return m_state; }
 
 	virtual void performTickAction();
 
 	void setBoulderState(boulderState x) { m_state = x; }
+	virtual void Boulder::respondToEnemy(DynamicObject* other);
+
+
 
 
 private:
