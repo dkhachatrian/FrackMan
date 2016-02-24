@@ -454,8 +454,10 @@ public:
 	virtual void Protester::performAnnoyedAction();
 
 	virtual void Protester::respondToPlayer(double distanceOfInteraction);
-	void respondToSquirt(double distanceOfInteraction);
-	void Protester::respondToBoulder(double distanceOfInteraction);
+	virtual void respondToSquirt(Squirt* squirt, double distanceOfInteraction);
+	virtual void Protester::respondToBoulder(double distanceOfInteraction);
+	virtual void Protester::respondToBribe(Gold* bribe, double distanceOfInteraction)
+
 
 
 	void setAnnoyed(bool x) { m_annoyed = x; }
@@ -579,6 +581,12 @@ public:
 
 	virtual int doSomething();
 
+	virtual void respondToPlayer(FrackMan* player, double distanceOfInteraction);
+	virtual void Goodie::interactWithPlayer() = 0;
+	virtual void Goodie::becomeDiscoveredByPlayer();
+	virtual void respondToEnemy(Protester* enemy, double distanceOfInteraction) {};
+
+
 	//virtual void respondToPlayer() = 0;
 
 	//picking up Goodies gives a score...
@@ -604,7 +612,7 @@ public:
 
 	virtual int doSomething();
 
-	virtual void respondToPlayer(double distanceOfInteraction);
+	virtual void interactWithPlayer(FrackMan* player, double distanceOfInteraction);
 
 
 private:
@@ -620,6 +628,9 @@ public:
 	virtual ~Barrel() {};
 
 	virtual int doSomething();
+	virtual void Barrel::interactWithPlayer(FrackMan* player, double distanceOfInteraction);
+
+
 };
 
 class Water :public Goodie
@@ -629,6 +640,10 @@ public:
 
 
 	virtual int doSomething();
+
+	virtual void interactWithPlayer(FrackMan* player, double distanceOfInteraction);
+
+
 };
 
 class Gold :public Goodie
@@ -639,6 +654,10 @@ public:
 	virtual ~Gold() {};
 
 	virtual int doSomething();
+
+	virtual void interactWithPlayer(FrackMan* player, double distanceOfInteraction);
+	virtual void respondToEnemy(Protester* enemy, double distanceOfInteraction);
+
 
 private:
 

@@ -762,10 +762,41 @@ bool StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 					switch (m_actors[j]->whatGroupAmI())
 					{
 					case enemies:
-						caller->respondToEnemy(m_actors[j], DISTANCES[k]); //can't regain specific pointer information from m_actors...
+					{
+						Protester* p = dynamic_cast<Protester*>(m_actors[j]);
+						if (p != nullptr) //ought to be the case
+							caller->respondToEnemy(p, DISTANCES[k]);
+						break;
 					}
-					
-					//->interactWithActor(m_actors[j], DISTANCES[k]);
+					case goodies:
+					{
+						Goodie* p = dynamic_cast<Goodie*>(m_actors[j]);
+						if (p != nullptr)
+							caller->respondToGoodie(p, DISTANCES[k]);
+						break;
+					}
+					case boulders:
+					{
+						Boulder* p = dynamic_cast<Boulder*>(m_actors[j]);
+						if (p != nullptr)
+							caller->respondToBoulder(p, DISTANCES[k]);
+						break;
+					}
+					case squirts:
+					{
+						Squirt* p = dynamic_cast<Squirt*>(m_actors[j]);
+						if (p != nullptr)
+							caller->respondToSquirt(p, DISTANCES[k]);
+						break;
+					}
+					case bribes:
+					{
+						Gold* p = dynamic_cast<Gold*>(m_actors[j]);
+						if (p != nullptr)
+							caller->respondToBribe(p, DISTANCES[k]);
+						break;
+					}
+					}
 				}
 			}
 		}

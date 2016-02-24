@@ -616,7 +616,7 @@ void Protester::respondToPlayer(double distanceOfInteraction)
 	}
 }
 
-void Protester::respondToSquirt(double distanceOfInteraction)
+void Protester::respondToSquirt(Squirt* squirt, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
@@ -641,6 +641,14 @@ void Protester::respondToBoulder(double distanceOfInteraction)
 			performGiveUpAction();
 			getWorld()->increaseScore(500); //score for bonking with boulder
 		}
+	}
+}
+
+void Protester::respondToBribe(Gold* bribe, double distanceOfInteraction)
+{
+	if (distanceOfInteraction <= DISTANCE_INTERACT)
+	{
+		
 	}
 }
 
@@ -809,19 +817,11 @@ int Goodie::doSomething()
 {
 	Actor::doSomething();
 
-	if (isDead())
-	{
-		getWorld()->playSound(SOUND_GOT_GOODIE);
-		getWorld()->increaseScore(giveScore());
-		return DEAD;
-	}
-
-	return 42;
 
 }
 
 
-int Goodie::respondToPlayer(double distanceOfInteraction)
+void Goodie::respondToPlayer(FrackMan* player, double distanceOfInteraction)
 {
 	int interaction = DISTANCE_ACTION_MAP[distanceOfInteraction];
 
@@ -836,14 +836,13 @@ int Goodie::respondToPlayer(double distanceOfInteraction)
 	}
 }
 
-void Goodie::interactWithPlayer()
+
+
+
+void Goodie::becomeDiscoveredByPlayer()
 {
-
+	setVisibility(true);
 }
-
-
-
-
 
 // Sonar Functions
 
@@ -883,15 +882,12 @@ int Sonar::doSomething()
 	return result;
 }
 
-void Sonar::respondToPlayer(double distanceOfInteraction)
+void Sonar::interactWithPlayer(FrackMan* player, double distanceOfInteraction)
 {
-
-
-	switch (distanceOfInteraction)
-	{
-		getWorld()->getPlayer()->changeSonarBy(1);
-		die();
-	}
+	player->changeSonarBy(1);
+	getWorld()->playSound(SOUND_GOT_GOODIE);
+	getWorld()->increaseScore(giveScore());
+	die();
 }
 
 
@@ -912,18 +908,16 @@ Barrel::Barrel(CoordType x, CoordType y, StudentWorld * sw, int score = SCORE_BA
 
 int Barrel::doSomething()
 {
-	Actor::doSomething(); //does most of the stuff,
-										//including making a sound or killing the Goodie or becoming visible if appropriate
+	Goodie::doSomething();
+}
 
-	if (isDead())
-	{
-		getWorld()->playSound(SOUND_FOUND_OIL); //different sound played for oil compared to other goodies
-		getWorld()->getPlayer()->changeGoldBy(1);
-		getWorld()->increaseScore(SCORE_GOLD_FRACKMAN);
-		return DEAD;
-	}
-
-	return 42;
+void Barrel::interactWithPlayer(FrackMan* player, double distanceOfInteraction)
+{
+	//player->changeSonarBy(1);
+	getWorld()->changeBarrelsLeftBy(-1);
+	getWorld()->playSound(SOUND_FOUND_OIL);
+	getWorld()->increaseScore(giveScore());
+	die();
 }
 
 
@@ -975,20 +969,36 @@ int Gold::doSomething()
 	{
 		if (whatGroupAmI() == goodies)
 		{
-			getWorld()->playSound(SOUND_GOT_GOODIE);
-			getWorld()->getPlayer()->changeGoldBy(1);
-			getWorld()->increaseScore(SCORE_GOLD_FRACKMAN);
+
 			return DEAD;
 		}
 		else
+		{
 			return DEAD; //let enemy handle the fact that it got bribed
+		}
 	}
-
 	return 42;
-
-
 }
 
+void Gold::interactWithPlayer(FrackMan* player, double distanceOfInteraction)
+{
+	if (whatGroupAmI() == bribes)
+		return;
+	else
+	{
+		getWorld()->playSound(SOUND_GOT_GOODIE);
+		player->changeGoldBy(1);
+		getWorld()->increaseScore(SCORE_GOLD_FRACKMAN);
+		return;
+	}
+}
+
+// will just die. Will have protester respond with bribe/point increase
+void Gold::respondToEnemy(Protester* enemy, double distanceOfInteraction)
+{
+	if (distanceOfInteraction <= DISTANCE_INTERACT && whatGroupAmI() == bribes)
+		die(); //otherwise, it doesn't respond to enemy
+}
 
 
 
