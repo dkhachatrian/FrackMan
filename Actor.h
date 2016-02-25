@@ -377,6 +377,7 @@ public:
 	//virtual int attemptAnnoyedAction() { return 0; }
 	//virtual bool shouldIBeAnnoyed() const { return false; }
 
+	virtual void respondToEnemy(Protester* enemy, double distanceOfInteraction);
 
 
 	int getSquirts() const { return m_squirts; }
@@ -419,29 +420,37 @@ const int REST_TICK_YELL = 15;
 class Protester :public DynamicObject
 {
 public:
-	Protester(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_PROTESTER) :DynamicObject(IID, DEPTH_PROTESTER, sw, x, y)
+	Protester(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_PROTESTER) :DynamicObject(IID_PROTESTER, DEPTH_PROTESTER, sw, x, y)
 	{
 		setVisibility(true);
 		setDir(left);
 		setHealth(PROTESTER_START_HEALTH);
 		setGroupAs(enemies);
-		m_pState = OK;
-		m_restTicks = REST_TICK_NORMAL;
+		setProtesterState(OK);
+		//m_restTicks = REST_TICK_NORMAL;
+		setRestTick();
 		m_coolDownPeriod = REST_TICK_YELL;
 		m_turnPeriod = 200;
 		rollNumberOfTimesToMoveInCurrentDirection();
-		m_currentRestTick = 0;
+		m_currentRestTick = -1; //immediately counts up to 0 on its first doSomething() call
 		m_currentNonrestTick = 0;
 		m_currentNonTurnedTick = 0;
 		m_currentCoolDownTick = 0;
 		m_annoyedRestTick = 0;
 		m_annoyed = false;
+		m_resting = false;
 	}
 	virtual ~Protester() {};
 
 	virtual int doSomething();
 	virtual Direction tryToGetToFrackMan() const;
 
+	void setResting(bool x) { m_resting = x; }
+
+
+	//void Protester::setAnnoyedRestTickMax(int x) = {m_annoyed}
+
+	virtual void setRestTick();
 
 	virtual void bribeMe();
 	//virtual void respondToGold();
@@ -449,8 +458,23 @@ public:
 
 	//void resetTick(int& t) { t = 0; }
 	
-	void setAnnoyedTickStatus(bool x) { m_annoyed = x; }
-	void setAnnoyedTickCount(int t) { m_annoyedRestTick = t; }
+	void setAnnoyedTick(int t) { m_annoyedRestTick = t; }
+	int getCurrentAnnoyedTick() const { return m_annoyedRestTick; }
+	void countUpAnAnnoyedTick() { m_annoyedRestTick++; }
+	void setMaxAnnoyedTickAs(int x) { m_annoyedRestTickMax = x; }
+	int getMaxAnnoyedTick() const { return m_annoyedRestTickMax; }
+
+	void setAnnoyed(bool x) { m_annoyed = x; }
+	bool amIAnnoyed() { return m_annoyed; }
+
+	bool amIResting() const { return m_resting; }
+
+
+	int getMaxRestTick() const { return m_restTicks; } //i.e., 4
+	void setMaxRestTickAs(int x) { m_restTicks = x; }
+	void setCurrentRestTick(int x) { m_currentRestTick = x; }
+	void countUpARestTick() { m_currentRestTick++; }
+	int getCurrentRestTick() const { return m_currentRestTick; }
 
 	protesterState getProtesterState() const { return m_pState; }
 	void setProtesterState(protesterState s) { m_pState = s; }
@@ -458,7 +482,7 @@ public:
 	void rollNumberOfTimesToMoveInCurrentDirection() { m_numTimesCurrentDir = (rand() % 53) + 8; }
 
 	virtual void performGiveUpAction();
-	virtual void Protester::performAnnoyedAction();
+	//virtual void Protester::performAnnoyedAction();
 
 	virtual void Protester::respondToPlayer(double distanceOfInteraction);
 	virtual void respondToSquirt(Squirt* squirt, double distanceOfInteraction);
@@ -467,10 +491,8 @@ public:
 	void Protester::startToLeave();
 
 
-	void setAnnoyed(bool x) { m_annoyed = x; }
-	bool amIAnnoyed() { return m_annoyed; }
 
-	void setCurrentRestTick(int x) { m_currentRestTick = 0; }
+
 
 	virtual void getHurt(int damage);
 
@@ -479,6 +501,7 @@ protected:
 
 
 private:
+	bool m_resting;
 	int m_restTicks;
 	int m_currentRestTick;
 	int m_currentNonrestTick;
@@ -488,6 +511,8 @@ private:
 	int m_coolDownPeriod;
 	int m_numTimesCurrentDir;
 	int m_annoyedRestTick;
+	int m_annoyedRestTickMax;
+
 	protesterState m_pState;
 
 	bool m_annoyed;

@@ -322,8 +322,8 @@ void Squirt::respondToEnemy(Protester* enemy, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
-		enemy->getHurt(DAMAGE_SQUIRT);
-		die();
+		//enemy->getHurt(DAMAGE_SQUIRT);
+		//die();
 	}
 }
 
@@ -463,43 +463,98 @@ void FrackMan::getHurt(int damage)
 	}
 }
 
+void FrackMan::respondToEnemy(Protester* enemy, double distanceOfInteraction)
+{
+	getHurt(DAMAGE_YELL);
+	enemy->respondToPlayer(distanceOfInteraction); //called here so that
+												// enemy can still call Actor::doSomething() and respond to other Actors
+												// (e.g., Squirts)
+}
 
 
 
 // Protester functions
 
 // have to deal with several ticks -- cannot rely on Actor::doSomething() to handle the tick (can handle asking the StudentWorld to interact though)
+
+
 int Protester::doSomething()
 {
-	if(getProtesterState() != leaving)
-		Actor::doSomething();
-
+	//first check to see if I'm dead
 	if (isDead())
 		return DEAD;
 
-	if (didIDie()) //maybe from Boulder or something
+	if (getProtesterState() != leaving)
+		Actor::doSomething();
+
+	//then we'll see if it should be resting due to mandatory rest ticking
+
+	//then count up a rest tick
+	countUpARestTick();
+
+	if (getCurrentRestTick() != getMaxRestTick()) //if can't move
 	{
-		m_currentRestTick = 0;
-		//performGiveUpAction();
+		//setResting(false); //let it have a chance to move later on
+		//setCurrentRestTick(0); // reset tick counter
+		return STATIONARY; //immediately return
+	}
+	else
+	{
+		setCurrentRestTick(0); //reset rest tick counter
 	}
 
 
+
+	//see if it's resting
+	if (amIResting()) //if it is, determine why
+	{
+		if (amIAnnoyed()) // count up annoyed ticks, and don't do anything if annoyed
+		{
+			countUpAnAnnoyedTick();
+			if (getCurrentAnnoyedTick() == getMaxAnnoyedTick()) //once it reaches here, cooldown time is finished
+			{
+				setAnnoyedTick(0);
+				setAnnoyed(false); //stop being annoyed
+				setResting(false); //and don't be considerd resting
+			}
+			return STATIONARY; //will not do anything while it's annoyed
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+	if (didIDie()) //maybe from Boulder or something
+	{
+		setCurrentRestTick(0);
+		setProtesterState(leaving);
+		//performGiveUpAction();
+	}
+
+	/*
 	if (amIAnnoyed())
 	{
-		if (m_annoyedRestTick < max(50, 100 - getWorld()->getLevel() * 10))
+		if (m_annoyedRestTick < getMaxRestTickCount())
 		{
 			m_annoyedRestTick++;
 			return STATIONARY;
 		}
 		else
 		{
-			m_annoyedRestTick = 0;
+			//m_annoyedRestTick = 0;
+			setAnnoyedTickCount(0);
 			setAnnoyed(false);
 		}
 	}
-
-	Direction dir = none;
-
+	*/
+	Direction dir = tryToGetToFrackMan();
+	/*
 	//determine if Protester will rest this turn, or get closer to resting
 	if (m_currentRestTick % m_restTicks == (m_restTicks - 1))
 	{
@@ -519,10 +574,14 @@ int Protester::doSomething()
 		m_currentNonrestTick++;
 		//m_currentRestTick++;
 	}
+	*/
+
+
 
 	switch (m_pState)
 	{
-	case leaving:
+	case leaving: //ignore other places, and instead try moving
+	{
 		if (getX() == X_UPPER_BOUND && getY() == Y_UPPER_BOUND)
 		{
 			die();
@@ -533,14 +592,18 @@ int Protester::doSomething()
 		attemptMove(dir);
 		return MOVED;
 		break;
-	case resting:
+	}
+	case resting: //no longer used...
+	{
 		if (didIDie())
 			setProtesterState(leaving);
 		else
 			setProtesterState(OK);
 		return STATIONARY;
 		//break;
-	case coolingDown:
+	}
+	case coolingDown: //no longer used...
+	{
 		m_currentCoolDownTick++;
 		if (m_currentCoolDownTick % m_coolDownPeriod == 0)
 		{
@@ -549,6 +612,7 @@ int Protester::doSomething()
 		}
 		return STATIONARY;
 		break;
+	}
 	case OK:
 
 		//attempt to yell at FrackMan
@@ -644,12 +708,15 @@ void Protester::bribeMe()
 }
 
 
+
 void Protester::respondToPlayer(double distanceOfInteraction)
 {
-	if (distanceOfInteraction == DISTANCE_YELL && getWorld()->amIFacingFrackMan(this))
+	if (!amIAnnoyed() && distanceOfInteraction <= DISTANCE_YELL && getWorld()->amIFacingFrackMan(this))
 	{
-		getWorld()->getPlayer()->getHurt(DAMAGE_YELL);
 		getWorld()->playSound(SOUND_PROTESTER_YELL);
+		setAnnoyed(true);
+		setMaxAnnoyedTickAs(15);
+		//setMaxAnnoyedRestTickAs(15);
 	}
 }
 
@@ -657,12 +724,21 @@ void Protester::respondToSquirt(Squirt* squirt, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
-		//getHurt(DAMAGE_SQUIRT);
-
+		squirt->die();
+		getHurt(DAMAGE_SQUIRT);
 		if (didIDie())
 		{
 			performGiveUpAction();
 			getWorld()->increaseScore(100); //score for killing with squirt
+		}
+		else
+		{
+			getWorld()->playSound(SOUND_PROTESTER_ANNOYED);
+			setAnnoyed(true);
+			setResting(true);
+			setMaxAnnoyedTickAs(max(50, 100 - getWorld()->getLevel() * 10));
+			setAnnoyedTick(0); //reset it to 0
+			//performAnnoyedAction();
 		}
 	}
 }
@@ -677,6 +753,15 @@ void Protester::respondToBoulder(double distanceOfInteraction)
 		{
 			performGiveUpAction();
 			getWorld()->increaseScore(500); //score for bonking with boulder (SAME AS FOR HARDCORE PROTESTER)s
+		}
+		else
+		{
+			getWorld()->playSound(SOUND_PROTESTER_ANNOYED);
+			setAnnoyed(true);
+			setResting(true);
+			setMaxAnnoyedTickAs(max(50, 100 - getWorld()->getLevel() * 10));
+			setAnnoyedTick(0); //reset it to 0
+							   //performAnnoyedAction();
 		}
 	}
 }
@@ -706,7 +791,8 @@ void Protester::getHurt(int damage)
 	}
 	else
 	{
-		performAnnoyedAction();
+		//getWorld()->playSound(SOUND_PROTESTER_ANNOYED);
+		//setAnnoyed(true);
 	}
 }
 
@@ -719,22 +805,20 @@ void Protester::performGiveUpAction()
 	setProtesterState(leaving);
 }
 
-void Protester::performAnnoyedAction()
-{
-	getWorld()->playSound(SOUND_PROTESTER_ANNOYED);
-	setAnnoyed(true);
-	setAnnoyedTickCount(0);
-	//setAnnoyedTickCount(max(50, 100 - getWorld()->getLevel() * 10));
-}
 
+void Protester::setRestTick()
+{
+	m_restTicks = max(0, 3 - (getWorld()->getLevel() / 4));
+}
 
 
 void HardcoreProtester::respondToBribe(Gold* bribe, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
+		getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
 		setAnnoyed(true);
-		setAnnoyedTickCount(0);
+		setMaxAnnoyedTickAs(max(50, 100 - getWorld()->getLevel() * 10));
 		getWorld()->increaseScore(50); //points for bribe (different from regular Protester)
 	}
 }
@@ -756,9 +840,11 @@ void HardcoreProtester::respondToSquirt(Squirt* squirt, double distanceOfInterac
 int HardcoreProtester::howFarAwayAmIFromFrackMan() const
 {
 	CoordType x, y, a, b;
+	int numberOfSteps;
 	sendLocation(x, y);
 	getWorld()->getPlayer()->sendLocation(a, b);
-	return getWorld()->numberOfStepsFromLocationToGoal(x, y, a, b);
+	getWorld()->howToGetFromLocationToGoal(x, y, a, b, numberOfSteps);
+	return numberOfSteps;
 }
 
 
@@ -773,7 +859,7 @@ int HardcoreProtester::howFarAwayAmIFromFrackMan() const
 void HardcoreProtester::bribeMe()
 {
 	getWorld()->increaseScore(50);
-	setAnnoyedTickCount(max(50, 100 - getWorld()->getLevel() * 10));
+	setMaxAnnoyedTickAs(max(50, 100 - getWorld()->getLevel() * 10));
 	setAnnoyed(true);
 }
 // doesn't play the annoyed sound ('gold' sound handled by Gold object)
@@ -824,7 +910,7 @@ GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
 
 	if (howFarAwayAmIFromFrackMan() <= getDirectionRange())
 	{
-		getWorld()->HowToGetFromLocationToGoal(x, y, a, b);
+		getWorld()->howToGetFromLocationToGoal(x, y, a, b);
 	}
 	else return getWorld()->directLineToFrackMan(this);
 }

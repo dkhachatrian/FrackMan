@@ -1233,7 +1233,7 @@ GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Actor* caller,
 	CoordType x, y;
 	caller->sendLocation(x, y);
 
-	return HowToGetFromLocationToGoal(x, y, x_goal, y_goal);
+	return howToGetFromLocationToGoal(x, y, x_goal, y_goal);
 }
 
 #include <queue>
@@ -1265,19 +1265,26 @@ void print2DCharArray(char arr[][Y_UPPER_BOUND + 1])
 
 
 
-GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
+GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
+{
+	int x = 0;
+	return howToGetFromLocationToGoal(x_actor, y_actor, x_goal, y_goal, x); //if just want Direction, x is a throwaway variable
+}
+
+GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps) const
 {
 	//return GraphObject::right;
+
 
 	std::queue<Coord> s;
 
 	//std::vector<GraphObject::Direction> steps; //will store correct steps to leave,
-											//give total number of steps with size()
-	
+	//give total number of steps with size()
+
 	char a[X_UPPER_BOUND + 1][Y_UPPER_BOUND + 1];
 
 	//determine all the spots the Actor cannot go
-	
+
 	for (int j = 0; j <= Y_UPPER_BOUND; j++)
 		for (int i = 0; i <= X_UPPER_BOUND; i++)
 		{
@@ -1285,10 +1292,10 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 				a[i][j] = WALL;
 			else if (isThereABoulderAt(i, j))
 			{
-				
+
 				for (int k = -DISTANCE_INTERACT; k < DISTANCE_INTERACT; k++)
 					for (int l = -DISTANCE_INTERACT; l < DISTANCE_INTERACT; l++)
-						if (!isInvalidLocation(i+k, j+l) && distance(i, j, i + k, j + l) <= DISTANCE_INTERACT)
+						if (!isInvalidLocation(i + k, j + l) && distance(i, j, i + k, j + l) <= DISTANCE_INTERACT)
 							a[i + k][j + l] = WALL;
 			}
 			else
@@ -1315,18 +1322,20 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 
 	CoordType x, y;
 
+	numberOfSteps = 0; //if already at goal, takes 0 steps
+
 	if (x_goal == x_actor && y_goal == y_actor) //check to see if we're already there
 		return GraphObject::none;
 
 	//std::queue<int> test;
 	//test.push(3);
 
- 	s.push(c);
+	s.push(c);
 	//steps.push_back(GraphObject::none);
 
 	while (!s.empty())
 	{
-		
+		numberOfSteps++; //every round through this while loop necessarily takes us one step closer to the goal
 		c = s.front();
 		s.pop();
 		//steps.erase(steps.begin()); //removes first element, corresponding to the first Coord
@@ -1373,7 +1382,7 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 			//steps.push_back(GraphObject::down); //push *opposite* direction to vector
 
 		}
-		
+
 	}
 
 	//if made it here and didn't return already, can't make it back
@@ -1384,12 +1393,13 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 
 
 
+
 int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
 {
 	int i = 0;
 	while (x_actor != x_goal || y_actor != y_goal)
 	{
-		GraphObject::Direction d = HowToGetFromLocationToGoal(x_actor, y_actor, x_goal, y_goal);
+		GraphObject::Direction d = howToGetFromLocationToGoal(x_actor, y_actor, x_goal, y_goal);
 		if (d != GraphObject::none)
 		{
 			i++;
