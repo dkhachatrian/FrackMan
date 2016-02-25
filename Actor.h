@@ -505,15 +505,19 @@ public:
 		setDetectionRange();
 	}
 	virtual int doSomething();
+	int howFarAwayAmIFromFrackMan() const;
 
-
+	virtual void HardcoreProtester::respondToSquirt(Squirt* squirt, double distanceOfInteraction);
 	virtual void respondToBribe(Gold* bribe, double distanceOfInteraction);
+
+
 
 	virtual Direction tryToGetToFrackMan() const;
 	virtual void bribeMe();
 
 protected:
 	void setDetectionRange();
+	int getDirectionRange() const { return m_detectionRange; }
 private:
 	//bool m_bribed;
 	int m_detectionRange;

@@ -322,7 +322,7 @@ void Squirt::respondToEnemy(Protester* enemy, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
-		//enemy->getHurt(DAMAGE_SQUIRT);
+		enemy->getHurt(DAMAGE_SQUIRT);
 		die();
 	}
 }
@@ -477,8 +477,11 @@ int Protester::doSomething()
 	if (isDead())
 		return DEAD;
 
-	if (didIDie()) //maybe from Boulder or somethings
+	if (didIDie()) //maybe from Boulder or something
+	{
 		m_currentRestTick = 0;
+		//performGiveUpAction();
+	}
 
 
 	if (amIAnnoyed())
@@ -654,7 +657,7 @@ void Protester::respondToSquirt(Squirt* squirt, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
-		getHurt(DAMAGE_SQUIRT);
+		//getHurt(DAMAGE_SQUIRT);
 
 		if (didIDie())
 		{
@@ -673,7 +676,7 @@ void Protester::respondToBoulder(double distanceOfInteraction)
 		if (didIDie())
 		{
 			performGiveUpAction();
-			getWorld()->increaseScore(500); //score for bonking with boulder
+			getWorld()->increaseScore(500); //score for bonking with boulder (SAME AS FOR HARDCORE PROTESTER)s
 		}
 	}
 }
@@ -683,6 +686,7 @@ void Protester::respondToBribe(Gold* bribe, double distanceOfInteraction)
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
 		startToLeave();
+		getWorld()->increaseScore(25); //points for bribing
 	}
 }
 
@@ -725,6 +729,40 @@ void Protester::performAnnoyedAction()
 
 
 
+void HardcoreProtester::respondToBribe(Gold* bribe, double distanceOfInteraction)
+{
+	if (distanceOfInteraction <= DISTANCE_INTERACT)
+	{
+		setAnnoyed(true);
+		setAnnoyedTickCount(0);
+		getWorld()->increaseScore(50); //points for bribe (different from regular Protester)
+	}
+}
+
+void HardcoreProtester::respondToSquirt(Squirt* squirt, double distanceOfInteraction)
+{
+	if (distanceOfInteraction <= DISTANCE_INTERACT)
+	{
+		//getHurt(DAMAGE_SQUIRT);
+
+		if (didIDie())
+		{
+			performGiveUpAction();
+			getWorld()->increaseScore(250); //score for killing with squirt DIFFERENT compared to regular Protester
+		}
+	}
+}
+
+int HardcoreProtester::howFarAwayAmIFromFrackMan() const
+{
+	CoordType x, y, a, b;
+	sendLocation(x, y);
+	getWorld()->getPlayer()->sendLocation(a, b);
+	return getWorld()->numberOfStepsFromLocationToGoal(x, y, a, b);
+}
+
+
+
 
 //thankfully, the rest tick for being bribed as a Hardcore Protester
 //is the same as being annoyed as a regular Protester
@@ -743,9 +781,14 @@ void HardcoreProtester::bribeMe()
 
 
 //so now I don't need to do anything fancy
+
+//need to fix
 int HardcoreProtester::doSomething()
 {
 	return Protester::doSomething();
+	//Actor::doSomething();
+	//attemptMove(tryToGetToFrackMan());
+	return 42;
 }
 
 void HardcoreProtester::setDetectionRange()
@@ -755,14 +798,14 @@ void HardcoreProtester::setDetectionRange()
 
 GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
 {
-	if (getWorld()->distanceBetweenActors(this, getWorld()->getPlayer()) >= m_detectionRange) //no reason to use taxing method
+	if (getWorld()->distanceBetweenActors(this, getWorld()->getPlayer()) > m_detectionRange) //no reason to use taxing method
 		Protester::tryToGetToFrackMan();
 
 	CoordType x_a, x_p, y_a, y_p;
 	sendLocation(x_a, y_a);
 	getWorld()->getPlayer()->sendLocation(x_p, y_p);
 
-	if (getWorld()->numberOfStepsFromLocationToGoal(x_a, y_a, x_p, y_p) <= m_detectionRange)
+	if (howFarAwayAmIFromFrackMan() <= m_detectionRange)
 	{
 		Direction d = getWorld()->tellMeHowToGetToMyGoal(this, x_p, y_p);
 		return d;
@@ -772,8 +815,21 @@ GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
 
 }
 
+/*
+GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
+{
+	CoordType x, y, a, b;
+	sendLocation(x, y);
+	getWorld()->getPlayer()->sendLocation(a, b);
 
+	if (howFarAwayAmIFromFrackMan() <= getDirectionRange())
+	{
+		getWorld()->HowToGetFromLocationToGoal(x, y, a, b);
+	}
+	else return getWorld()->directLineToFrackMan(this);
+}
 
+*/
 
 
 

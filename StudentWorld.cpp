@@ -187,8 +187,8 @@ int StudentWorld::move()
 		if ((rand() % 100) < m_probabilityHardcoreSpawn)
 		{
 			//spawn a Hardcore Protester at (60,60)
-			//HardcoreProtester* p = new HardcoreProtester(X_UPPER_BOUND, Y_UPPER_BOUND, this);
-			//m_actors.push_back(p);
+			HardcoreProtester* p = new HardcoreProtester(X_UPPER_BOUND, Y_UPPER_BOUND, this);
+			m_actors.push_back(p);
 		}
 		else
 		{
@@ -1216,9 +1216,11 @@ void StudentWorld::letPlayerFireASquirt()
 		break;
 	}
 
-
-	Squirt* p = new Squirt(x+dx, y+dy, this, m_player->getDirection());
-	m_actors.push_back(p);
+	if (isThereSpaceForAnActorHere(x + dx, y + dy))
+	{
+		Squirt* p = new Squirt(x + dx, y + dy, this, m_player->getDirection());
+		m_actors.push_back(p);
+	}
 	playSound(SOUND_PLAYER_SQUIRT);
 	m_player->changeSquirtsBy(-1);
 	return;
@@ -1241,21 +1243,43 @@ const char BREADCRUMB = '#';
 const char PATH = '.';
 const char GOAL = '!';
 
+
+
+void print2DCharArray(char arr[][Y_UPPER_BOUND + 1])
+{
+	//debug map
+
+	//flipped vertically to 'match' actual case
+	for (int j = Y_UPPER_BOUND; j >= 0; j--)
+	{
+		for (int i = 0; i < X_UPPER_BOUND + 1; i++)
+		{
+			std::cout << arr[i][j];
+		}
+		std::cout << std::endl;
+	}
+
+	std::cout << std::endl << std::endl; //spacing
+}
+
+
+
+
 GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
 {
 	//return GraphObject::right;
 
 	std::queue<Coord> s;
 
-	std::vector<GraphObject::Direction> steps; //will store correct steps to leave,
+	//std::vector<GraphObject::Direction> steps; //will store correct steps to leave,
 											//give total number of steps with size()
 	
-	char a[X_UPPER_BOUND][Y_UPPER_BOUND];
+	char a[X_UPPER_BOUND + 1][Y_UPPER_BOUND + 1];
 
 	//determine all the spots the Actor cannot go
 	
-	for (int j = 0; j < Y_UPPER_BOUND + 1; j++)
-		for (int i = 0; i < X_UPPER_BOUND + 1; i++)
+	for (int j = 0; j <= Y_UPPER_BOUND; j++)
+		for (int i = 0; i <= X_UPPER_BOUND; i++)
 		{
 			if (isThereDirtAt(i, j))
 				a[i][j] = WALL;
@@ -1284,18 +1308,8 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 	a[x_actor][y_actor] = GOAL;
 	a[x_goal][y_goal] = BREADCRUMB;
 
-	//debug map
 
-	//flipped vertically to 'match' actual case
-	for (int j = Y_UPPER_BOUND; j > 0; j--)
-	{
-		for (int i = 0; i < X_UPPER_BOUND + 1; i++)
-		{
-			std::cout << a[i][j];
-		}
-		std::cout << std::endl;
-	}
-
+	//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
 
 	Coord c = Coord(x_goal, y_goal);
 
@@ -1308,16 +1322,18 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 	//test.push(3);
 
  	s.push(c);
-	steps.push_back(GraphObject::none);
+	//steps.push_back(GraphObject::none);
 
 	while (!s.empty())
 	{
 		
 		c = s.front();
 		s.pop();
-		steps.erase(steps.begin()); //removes first element, corresponding to the first Coord
+		//steps.erase(steps.begin()); //removes first element, corresponding to the first Coord
 		x = c.m_x, y = c.m_y;
+		//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
 		a[x][y] = BREADCRUMB;
+
 
 		if (a[x + LEFT_DIR][y] == GOAL) //if the 'goal' Actor would have to move left to get to the 'caller' Actor
 			return GraphObject::right; //the caller should move the opposite of left, i.e., right
@@ -1325,7 +1341,7 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 		{
 			Coord d(x + LEFT_DIR, y); //push the Coordinate to the queue
 			s.push(d);
-
+			//steps.push_back(GraphObject::right); //push *opposite* direction to vector
 		}
 		//repeat thought process for all four cardinal directions
 		if (a[x][y + DOWN_DIR] == GOAL)
@@ -1334,6 +1350,8 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 		{
 			Coord d(x, y + DOWN_DIR);
 			s.push(d);
+			//steps.push_back(GraphObject::up); //push *opposite* direction to vector
+
 		}
 
 		if (a[x + RIGHT_DIR][y] == GOAL)
@@ -1342,6 +1360,8 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 		{
 			Coord d(x + RIGHT_DIR, y);
 			s.push(d);
+			//steps.push_back(GraphObject::left); //push *opposite* direction to vector
+
 		}
 
 		if (a[x][y + UP_DIR] == GOAL)
@@ -1350,6 +1370,8 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 		{
 			Coord d(x, y + UP_DIR);
 			s.push(d);
+			//steps.push_back(GraphObject::down); //push *opposite* direction to vector
+
 		}
 		
 	}
@@ -1359,6 +1381,8 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 	return GraphObject::none;
 
 }
+
+
 
 int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
 {
