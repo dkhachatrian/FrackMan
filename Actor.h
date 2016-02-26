@@ -452,7 +452,6 @@ public:
 
 	virtual void setRestTick();
 
-	virtual void bribeMe();
 	//virtual void respondToGold();
 	int getDirTimes() const { return m_numTimesCurrentDir; }
 
@@ -537,8 +536,6 @@ public:
 	virtual GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const;
 
 
-	//virtual Direction tryToGetToFrackMan() const;
-	virtual void bribeMe();
 
 protected:
 	void setDetectionRange();

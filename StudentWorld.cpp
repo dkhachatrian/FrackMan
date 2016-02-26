@@ -84,7 +84,7 @@ int StudentWorld::init()
 	initializeDistanceActionMap();
 	setUpDirt();
 
-	// reset FrackMan's inventory after every level
+	// we reset FrackMan's inventory after every level, so just create a new FrackMan for each level
 	m_player = new FrackMan(this, PLAYER_START_X, PLAYER_START_Y);
 
 	CoordType x, y;
@@ -118,7 +118,7 @@ int StudentWorld::init()
 		if(foundSpot)
 		{ 
 			Boulder* p = new Boulder(x, y, this, IID_BOULDER, DEPTH_BOULDER);
-			p->moveTo(x, y);
+			//p->moveTo(x, y);
 			removeDirtForBoulder(p);
 			m_actors.push_back(p); //keep track of the Actors
 			i++;
@@ -748,7 +748,7 @@ void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 	{
 		if (caller == m_player)
 			break; //don't match player with itself
-		if (distance(x1, y1, x2, y2) < DISTANCES[k])
+		if (distance(x1, y1, x2, y2) <= DISTANCES[k])
 		{
 			caller->respondToPlayer(m_player, DISTANCES[k]);
 		}
@@ -1396,10 +1396,11 @@ GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_acto
 }
 
 
-GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const
+GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(int x_actor, int y_actor, int x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const
 {
 	//return GraphObject::right;
-
+	if (numberOfSteps == maxDepth)
+		return GraphObject::none;
 
 	std::queue<Coord> s;
 
@@ -1460,7 +1461,7 @@ GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_acto
 
 	while (!s.empty() && (numberOfSteps <= maxDepth))
 	{
-		numberOfSteps++; //every round through this while loop necessarily takes us one step closer to the goal
+		//numberOfSteps++; //every round through this while loop necessarily takes us one step closer to the goal
 		c = s.front();
 		s.pop();
 		//steps.erase(steps.begin()); //removes first element, corresponding to the first Coord
@@ -1470,7 +1471,11 @@ GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_acto
 
 
 		if (a[x + LEFT_DIR][y] == GOAL) //if the 'goal' Actor would have to move left to get to the 'caller' Actor
-			return GraphObject::right; //the caller should move the opposite of left, i.e., right
+		{
+			//numberOfSteps++;
+			//if (howToGetFromLocationToGoal(x_actor + RIGHT_DIR, y_actor, x_goal, y_goal, numberOfSteps, maxDepth) != none)
+				return GraphObject::right; //the caller should move the opposite of left, i.e., right
+		}
 		else if (a[x + LEFT_DIR][y] == PATH) //otherwise, if I can move there
 		{
 			Coord d(x + LEFT_DIR, y); //push the Coordinate to the queue

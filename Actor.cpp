@@ -485,7 +485,8 @@ int Protester::doSomething()
 		return DEAD;
 
 	if (getProtesterState() != leaving)
-		Actor::doSomething();
+		getWorld()->attemptToInteractWithNearbyActors(this);
+		//Actor::doSomething();
 
 	//then we'll see if it should be resting due to mandatory rest ticking
 
@@ -700,11 +701,6 @@ GraphObject::Direction Protester::tryToGetToFrackMan() const
 	return getWorld()->directLineToFrackMan(this);
 }
 
-void Protester::bribeMe()
-{
-	getWorld()->increaseScore(25);
-	setProtesterState(leaving);
-}
 
 
 
@@ -870,34 +866,6 @@ int HardcoreProtester::howFarAwayAmIFromFrackMan() const
 	return numberOfSteps;
 }
 
-/*
-GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
-{
-	if (howFarAwayAmIFromFrackMan() > getDetectionRange())
-		return Protester::tryToGetToFrackMan();
-
-	else return getWorld()->tellMeHowToGetToMyGoal(this, getWorld()->getPlayer()->getX(), getWorld()->getPlayer()->getY());
-
-
-}
-*/
-
-
-
-//thankfully, the rest tick for being bribed as a Hardcore Protester
-//is the same as being annoyed as a regular Protester
-//so can recycle everything in Protester::doSomething() by having bribeMe() do something different, namely
-
-
-
-void HardcoreProtester::bribeMe()
-{
-	getWorld()->increaseScore(50);
-	setMaxAnnoyedTickAs(max(50, 100 - getWorld()->getLevel() * 10));
-	setAnnoyed(true);
-}
-// doesn't play the annoyed sound ('gold' sound handled by Gold object)
-//but gets him "annoyed" / stunned for appropriate amount of time
 
 
 //so now I don't need to do anything fancy
