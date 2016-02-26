@@ -64,8 +64,8 @@ StudentWorld::StudentWorld(std::string assetDir)
 	//m_barrelsLeft = -1;
 	//m_goldLeft = -1;
 	//m_bouldersLeft = -1;
-
-	//initDirt();
+	m_dirts = nullptr;
+	m_player = nullptr;
 
 }
 
@@ -81,9 +81,10 @@ void StudentWorld::setAllActorsAsVisible()
 int StudentWorld::init()
 {
 	initDirt();
+	initializeDistanceActionMap();
 	setUpDirt();
 
-	// reset FrackMan's inventory after every level
+	// we reset FrackMan's inventory after every level, so just create a new FrackMan for each level
 	m_player = new FrackMan(this, PLAYER_START_X, PLAYER_START_Y);
 
 	CoordType x, y;
@@ -102,10 +103,11 @@ int StudentWorld::init()
 	m_goldLeft = max(5 - getLevel() / 2, 2);
 	m_barrelsLeft = min(2 + getLevel(), 20);
 	m_goodieDenominator = (getLevel() * 25) + 300;
-	m_targetEnemyNumber = max(25, (200 - getLevel()));
-	m_numberOfTicksToWaitBetweenEnemySpawns = min(15, 2 + getLevel() * 1.5);
-	m_ticksBetweenEnemySpawns = 0;
+	m_targetEnemyNumber = min(15, 2 + getLevel() * 1.5);
+	m_numberOfTicksToWaitBetweenEnemySpawns = max(25, (200 - getLevel())); 
+	m_ticksBetweenEnemySpawns = 1; //an enemy will spawn in the first tick
 	m_probabilityHardcoreSpawn = min(90, getLevel() * 10 + 30); //in percent
+	m_numEnemies = 0;
 
 	//place boulders
 	int i = 0;
@@ -116,7 +118,7 @@ int StudentWorld::init()
 		if(foundSpot)
 		{ 
 			Boulder* p = new Boulder(x, y, this, IID_BOULDER, DEPTH_BOULDER);
-			p->moveTo(x, y);
+			//p->moveTo(x, y);
 			removeDirtForBoulder(p);
 			m_actors.push_back(p); //keep track of the Actors
 			i++;
@@ -159,7 +161,7 @@ int StudentWorld::init()
 	//setUpDirt();
 
 	//for debugging
-	setAllActorsAsVisible();
+	//setAllActorsAsVisible();
 
 
 	return 1; //change later
@@ -172,22 +174,33 @@ int StudentWorld::move()
 										   // The term “Actors” refers to all Protesters, the player, Goodies,
 										   // Boulders, Barrels of oil, Holes, Squirts, the Exit, etc.
 										   // Give each Actor a chance to do something
+	m_ticksBetweenEnemySpawns--;
 
-	if(m_ticksBetweenEnemySpawns == 0 && getNumberOfEnemies() < m_targetEnemyNumber)
+	if(m_ticksBetweenEnemySpawns % m_numberOfTicksToWaitBetweenEnemySpawns == 0 && getNumberOfEnemies() < m_targetEnemyNumber)
 	{
+		m_ticksBetweenEnemySpawns = m_numberOfTicksToWaitBetweenEnemySpawns; //reset tick counter
+
+		//Protester* p = new Protester(X_UPPER_BOUND, Y_UPPER_BOUND, this);
+		//m_actors.push_back(p);
+
 		if ((rand() % 100) < m_probabilityHardcoreSpawn)
 		{
 			//spawn a Hardcore Protester at (60,60)
+			HardcoreProtester* p = new HardcoreProtester(X_UPPER_BOUND, Y_UPPER_BOUND, this);
+			m_actors.push_back(p);
 		}
 		else
 		{
 			//spawn a regular Protester at (60,60)
+			Protester* p = new Protester(X_UPPER_BOUND, Y_UPPER_BOUND, this);
+			m_actors.push_back(p);
 		}
+		m_numEnemies++;
 	}
 
 	//count a tick as we wait for a chance to spawn an enemy
 	// (will spawn when m_ticksBetweenEnemySpawns modulo's back down to zero)
-	m_ticksBetweenEnemySpawns = (m_ticksBetweenEnemySpawns + 1) % m_numberOfTicksToWaitBetweenEnemySpawns;
+	//m_ticksBetweenEnemySpawns = (m_ticksBetweenEnemySpawns + 1) % m_numberOfTicksToWaitBetweenEnemySpawns;
 
 	//determine whether to add a WaterPool or SonarKit
 	// (will allow more than one Goodie to be at the same location
@@ -295,7 +308,8 @@ bool StudentWorld::cleanUpActorsAndFrackMan()
 	//then remove them all from the vector of Actor*
 	removeDeadActors();
 
-	delete m_player;
+	if(m_player != nullptr)
+		delete m_player;
 	/*
 	std::vector<Actor*>::iterator it = m_actors.begin();
 
@@ -361,6 +375,8 @@ void StudentWorld::removeDirtForBoulder(const Actor* a)
 
 bool StudentWorld::isThereSpaceForAnActorHere(CoordType x, CoordType y) const
 {
+	if (isInvalidLocation(x, y))
+		return false;
 	for (int i = 0; i < SPRITE_WIDTH; i++)
 		for (int j = 0; j < SPRITE_HEIGHT; j++)
 			if (isThereDirtAt(x + i, y + j))
@@ -468,12 +484,12 @@ bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int
 
 //isThereDirtInDirectionOfActor;
 
-bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const
+bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller, GraphObject::Direction dir) const
 {
 	CoordType x, y;
 	caller->sendLocation(x, y);
 
-	return isThereDirtInDirection(caller->getDirection(), x, y, caller->getWidth(), caller->getHeight());
+	return isThereDirtInDirection(dir, x, y, caller->getWidth(), caller->getHeight());
 
 	//if (y == 0)
 	//	return false; //there can't be dirt under it if it's at the bottom!
@@ -485,6 +501,10 @@ bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const
 
 bool StudentWorld::isThereDirtInDirection(GraphObject::Direction dir, CoordType x, CoordType y, CoordType height, CoordType width) const
 {
+	CoordType x_old = x, y_old = y;
+	moveCoordsInDirection(x_old, y_old, dir);
+	if (x_old > X_UPPER_BOUND || y_old > Y_UPPER_BOUND)
+		return true; //pretend like the boundaries are 'dirt' so that it try moving through the boundary
 
 	switch (dir)
 	{
@@ -711,9 +731,85 @@ bool StudentWorld::removeDirtForFrackMan()
 }
 
 
-// This will undoubtedly need to change in structure once I implement the protesters...
-bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
+// Tells the caller which interaction functions to call, and which distance/action to do
+// Each Actor will call this function when it doSomething()'s, so both 'respondToXXX' functions will be called by the end of a tick
+//		(though only one way is done per caller)
+void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 {
+
+	CoordType x1, y1, x2, y2;
+	caller->sendLocation(x1, y1);
+
+
+	//first check against other players
+	m_player->sendLocation(x2, y2);
+
+	for (int k = 0; k < DISTANCES.size(); k++) //DISTANCES only includes INTERACT and DISCOVER, the two that all actors can potentially respond to
+	{
+		if (caller == m_player)
+			break; //don't match player with itself
+		if (distance(x1, y1, x2, y2) <= DISTANCES[k])
+		{
+			caller->respondToPlayer(m_player, DISTANCES[k]);
+		}
+	}
+
+
+
+	//check against all other Actors
+	for (int j = 0; j < m_actors.size(); j++)
+	{
+		m_actors[j]->sendLocation(x2, y2);
+		if (caller != m_actors[j]) //we don't want the Actor interacting with itself
+		{
+			for (int k = 0; k < DISTANCES.size(); k++)
+			{
+				if (distance(x1, y1, x2, y2) <= DISTANCES[k])
+				{
+					switch (m_actors[j]->whatGroupAmI())
+					{
+					case enemies:
+					{
+						Protester* p = dynamic_cast<Protester*>(m_actors[j]);
+						if (p != nullptr) //ought to be the case
+							caller->respondToEnemy(p, DISTANCES[k]);
+						break;
+					}
+					case goodies:
+					{
+						Goodie* p = dynamic_cast<Goodie*>(m_actors[j]);
+						if (p != nullptr)
+							caller->respondToGoodie(p, DISTANCES[k]);
+						break;
+					}
+					case boulders:
+					{
+						Boulder* p = dynamic_cast<Boulder*>(m_actors[j]);
+						if (p != nullptr)
+							caller->respondToBoulder(p, DISTANCES[k]);
+						break;
+					}
+					case squirts:
+					{
+						Squirt* p = dynamic_cast<Squirt*>(m_actors[j]);
+						if (p != nullptr)
+							caller->respondToSquirt(p, DISTANCES[k]);
+						break;
+					}
+					case bribes:
+					{
+						Gold* p = dynamic_cast<Gold*>(m_actors[j]);
+						if (p != nullptr)
+							caller->respondToBribe(p, DISTANCES[k]);
+						break;
+					}
+					}
+				}
+			}
+		}
+	}
+
+	/*
 	int damage = 0;
 
 	switch (caller->getIdentity())
@@ -739,9 +835,28 @@ bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
 	{
 		Actor* p = m_actors[i];
 		Group g = p->whatGroupAmI();
-		if (g == enemies && isActorAffectedByActor(caller, p, DISTANCE_INTERACT))
+		if (m_actors[i]->whatGroupAmI() == enemies && isActorAffectedByActor(caller, m_actors[i], INTERACTED))
 		{
 			p->changeHealthBy(damage);
+			if (p->didIDie())
+			{
+				//playSound(SOUND_PROTESTER_GIVE_UP);
+				p->performGiveUpAction();
+				if (caller->getIdentity() == IID_BOULDER)
+					StudentWorld::increaseScore(500);
+				else if (caller->getIdentity() == IID_WATER_SPURT)
+				{
+					if (p->getIdentity() == IID_PROTESTER)
+						increaseScore(100);
+					else if (p->getIdentity() == IID_HARD_CORE_PROTESTER)
+						increaseScore(250);
+				}
+			}
+			else
+			{
+				p->setAnnoyed(true);
+				playSound(SOUND_PROTESTER_ANNOYED);
+			}
 			interacted = true;
 			break;
 		}
@@ -749,6 +864,9 @@ bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller)
 	}
 
 	return interacted;
+	*/
+
+	return;
 }
 
 
@@ -789,9 +907,9 @@ std::string StudentWorld::formatDisplayText(int score, int level, int lives,
 	d_level = "Lvl: " + prependCharToStringToSize(to_string(level), ' ', 2);
 	d_lives = "Lives: " + prependCharToStringToSize(to_string(lives), ' ', 1);
 
-	int hp = health / PLAYER_START_HEALTH * 100.00; //start health is max health
+	int hp = health / PLAYER_START_HEALTH * 100; //start health is max health
 	//should convert double on right to (truncated) int on left.
-	d_health = "Hlth: " + prependCharToStringToSize(to_string(hp), ' ', 3) + '%';
+	d_health = "Hlth: " + prependCharToStringToSize(to_string(health*10), ' ', 3) + '%';
 
 	d_squirts = "Wtr: " + prependCharToStringToSize(to_string(squirts), ' ', 2);
 	d_gold = "Gld: " + prependCharToStringToSize(to_string(gold), ' ', 2);
@@ -822,17 +940,18 @@ bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Directi
 	CoordType x, y;
 	caller->sendLocation(x, y);
 
-	if (isInvalidLocation(x, y)) //if trying to go outside possible gridspace, bad
-	{
-		caller->moveTo(caller->getX(), caller->getY()); //make it 'move' in place for animation
-		return false;
-	}
+
 
 	//bool transformed = caller->sendEffectiveLocation(x_t, y_t, moveDir); //causes problems when approaching from the left
 
 	bool result = tryToMoveFromLocation(x, y, caller->getDirection());
 		//return false;
 
+	if (isInvalidLocation(x, y)) //if trying to go outside possible gridspace, bad
+	{
+		caller->moveTo(caller->getX(), caller->getY()); //make it 'move' in place for animation
+		return false;
+	}
 
 
 	if(result)
@@ -865,7 +984,7 @@ void StudentWorld::moveCoordsInDirection(CoordType& x, CoordType& y, GraphObject
 }
 
 
-bool StudentWorld::tryToMoveFromLocation(CoordType& x, CoordType& y, GraphObject::Direction moveDir)
+bool StudentWorld::tryToMoveFromLocation(CoordType& x, CoordType& y, GraphObject::Direction moveDir) const
 {
 	CoordType x_old = x, y_old = y;
 
@@ -878,16 +997,74 @@ bool StudentWorld::tryToMoveFromLocation(CoordType& x, CoordType& y, GraphObject
 		return false; //don't move, no animation either
 	}
 
+
 	//by this point, FrackMan will have dug through
 	// and no other Actors can move through Dirt
 	return (isThereSpaceForAnActorHere(x, y));
 }
 
+GraphObject::Direction StudentWorld::canITurnAndMove(const Actor* caller) const
+{
+	GraphObject::Direction cDir = caller->getDirection();
+	CoordType x, y;
+	caller->sendLocation(x, y);
+	std::vector<GraphObject::Direction> pDirs;
+
+	switch(cDir)
+	{
+	case GraphObject::left:
+	case GraphObject::right:
+		pDirs.push_back(GraphObject::up);
+		pDirs.push_back(GraphObject::down);
+		break;
+	case GraphObject::up:
+	case GraphObject::down:
+		pDirs.push_back(GraphObject::left);
+		pDirs.push_back(GraphObject::right);
+		break;
+	}
+
+	std::vector<GraphObject::Direction>::iterator it = pDirs.begin();
+
+	while (it != pDirs.end())
+	{
+		if (!StudentWorld::tryToMoveFromLocation(x, y, (*it)))
+			it = pDirs.erase(it);
+		else it++;
+	}
+
+	if (pDirs.size() == 0)
+		return GraphObject::none; //can't turn
+	else //otherwise, choose a random way to turn (or the only way to turn if there's only one way to turn)
+		return (pDirs[rand() % pDirs.size()]);
+
+
+}
+/*
+bool StudentWorld::bribeEnemy(const Actor* caller) const
+{
+	CoordType x, y;
+	caller->sendLocation(x, y);
+
+	for (int i = 0; i < m_actors.size(); i++)
+	{
+		Actor* p = m_actors[i];
+		if (isActorAffectedByActor(caller, m_actors[i], INTERACTED) && m_actors[i]->whatGroupAmI() == enemies)
+		{
+			m_actors[i]->bribeMe();
+			return true;
+		}
+	}
+
+	return false;
+}
+*/
+
 // Students:  Add code to this file (if you wish), StudentWorld.h, Actor.h and Actor.cpp
 
 //a is always a dynamicObject 
 
-
+/*
 //overlap compares the bottom-left corner of each sprite to determine overlap (should always be a valid comparison)
 int StudentWorld::overlap(const Actor* a, const Actor* b) const
 {
@@ -975,8 +1152,9 @@ int StudentWorld::overlap(const Actor* a, const Actor* b) const
 	
 	//if either dx or dy are less
 
-	*/
+	
 }
+*/
 
 double StudentWorld::distanceBetweenActors(const Actor* a, const Actor* b) const
 {
@@ -1042,9 +1220,11 @@ void StudentWorld::letPlayerFireASquirt()
 		break;
 	}
 
-
-	Squirt* p = new Squirt(x+dx, y+dy, this, m_player->getDirection());
-	m_actors.push_back(p);
+	if (isThereSpaceForAnActorHere(x + dx, y + dy))
+	{
+		Squirt* p = new Squirt(x + dx, y + dy, this, m_player->getDirection());
+		m_actors.push_back(p);
+	}
 	playSound(SOUND_PLAYER_SQUIRT);
 	m_player->changeSquirtsBy(-1);
 	return;
@@ -1057,71 +1237,134 @@ GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Actor* caller,
 	CoordType x, y;
 	caller->sendLocation(x, y);
 
-	return HowToGetFromLocationToGoal(x, y, x_goal, y_goal);
+	return howToGetFromLocationToGoal(x, y, x_goal, y_goal);
 }
 
 #include <queue>
+#include <iostream>
 const char WALL = 'X';
 const char BREADCRUMB = '#';
 const char PATH = '.';
-const char GOAL = '%';
+const char GOAL = '!';
 
-GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
+
+
+void print2DCharArray(char arr[][Y_UPPER_BOUND + 1])
 {
-	return GraphObject::right;
+	//debug map
+
+	//flipped vertically to 'match' actual case
+	for (int j = Y_UPPER_BOUND; j >= 0; j--)
+	{
+		for (int i = 0; i < X_UPPER_BOUND + 1; i++)
+		{
+			std::cout << arr[i][j];
+		}
+		std::cout << std::endl;
+	}
+
+	std::cout << std::endl << std::endl; //spacing
+}
+
+
+
+
+GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
+{
+	int x = 0;
+	return howToGetFromLocationToGoal(x_actor, y_actor, x_goal, y_goal, x); //if just want Direction, x is a throwaway variable
+}
+
+GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps) const
+{
+	//return GraphObject::right;
+
 
 	std::queue<Coord> s;
 
-	char a[X_UPPER_BOUND][Y_UPPER_BOUND];
+	//std::vector<GraphObject::Direction> steps; //will store correct steps to leave,
+	//give total number of steps with size()
 
-	for (int i = 0; i < X_UPPER_BOUND; i++)
-		for (int j = 0; j < Y_UPPER_BOUND; j++)
+	char a[X_UPPER_BOUND + 1][Y_UPPER_BOUND + 1];
+
+	//determine all the spots the Actor cannot go
+
+	for (int j = 0; j <= Y_UPPER_BOUND; j++)
+		for (int i = 0; i <= X_UPPER_BOUND; i++)
 		{
 			if (isThereDirtAt(i, j))
 				a[i][j] = WALL;
 			else if (isThereABoulderAt(i, j))
 			{
-				for (int k = 0; k < SPRITE_WIDTH; k++)
-					for (int l = 0; l < SPRITE_HEIGHT; l++)
-						a[i + k][j + l] = WALL;
+
+				for (int k = -DISTANCE_INTERACT; k < DISTANCE_INTERACT; k++)
+					for (int l = -DISTANCE_INTERACT; l < DISTANCE_INTERACT; l++)
+						if (!isInvalidLocation(i + k, j + l) && distance(i, j, i + k, j + l) <= DISTANCE_INTERACT)
+							a[i + k][j + l] = WALL;
 			}
-			else a[i][j] = PATH;
+			else
+			{
+				if (isThereSpaceForAnActorHere(i, j))
+					a[i][j] = PATH;
+				else a[i][j] = WALL; //if can't fit, essentially a wall.
+			}
 		}
+
 
 	//to obtain Direction, will have to work backwards, from Goal to Actor
 	// When they finally match, return the opposite direction of that used to reach the Actor
-	Coord c(x_goal, y_goal);
+	//
+
+
 	a[x_actor][y_actor] = GOAL;
+	a[x_goal][y_goal] = BREADCRUMB;
 
-	CoordType x = c.m_x, y = c.m_y;
 
-	if (c.m_x == x_actor && c.m_y == y_actor)
+	//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
+
+	Coord c = Coord(x_goal, y_goal);
+
+	CoordType x, y;
+
+	numberOfSteps = 0; //if already at goal, takes 0 steps
+
+	if (x_goal == x_actor && y_goal == y_actor) //check to see if we're already there
 		return GraphObject::none;
 
+	//std::queue<int> test;
+	//test.push(3);
+
 	s.push(c);
+	//steps.push_back(GraphObject::none);
 
 	while (!s.empty())
 	{
-
+		numberOfSteps++; //every round through this while loop necessarily takes us one step closer to the goal
 		c = s.front();
 		s.pop();
+		//steps.erase(steps.begin()); //removes first element, corresponding to the first Coord
 		x = c.m_x, y = c.m_y;
+		//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
 		a[x][y] = BREADCRUMB;
 
-		if (a[x + LEFT_DIR][y] == GOAL)
-			return GraphObject::right;
-		else if (a[x + LEFT_DIR][y] == PATH)
-		{
-			Coord d(x + LEFT_DIR, y);
-			s.push(d);
-		}
 
+		if (a[x + LEFT_DIR][y] == GOAL) //if the 'goal' Actor would have to move left to get to the 'caller' Actor
+			return GraphObject::right; //the caller should move the opposite of left, i.e., right
+		else if (a[x + LEFT_DIR][y] == PATH) //otherwise, if I can move there
+		{
+			Coord d(x + LEFT_DIR, y); //push the Coordinate to the queue
+			s.push(d);
+			//steps.push_back(GraphObject::right); //push *opposite* direction to vector
+		}
+		//repeat thought process for all four cardinal directions
 		if (a[x][y + DOWN_DIR] == GOAL)
 			return GraphObject::up;
 		else if (a[x][y + DOWN_DIR] == PATH)
 		{
 			Coord d(x, y + DOWN_DIR);
 			s.push(d);
+			//steps.push_back(GraphObject::up); //push *opposite* direction to vector
+
 		}
 
 		if (a[x + RIGHT_DIR][y] == GOAL)
@@ -1130,6 +1373,8 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 		{
 			Coord d(x + RIGHT_DIR, y);
 			s.push(d);
+			//steps.push_back(GraphObject::left); //push *opposite* direction to vector
+
 		}
 
 		if (a[x][y + UP_DIR] == GOAL)
@@ -1138,15 +1383,328 @@ GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_acto
 		{
 			Coord d(x, y + UP_DIR);
 			s.push(d);
+			//steps.push_back(GraphObject::down); //push *opposite* direction to vector
+
 		}
 
 	}
 
-	//if made it here and didn't return already, can't make it back (which is worrisome...)
+	//if made it here and didn't return already, can't make it back
+	//(which is worrisome, since there should always be a way back...)
 	return GraphObject::none;
 
 }
 
+#include <map>
+// find goal
+// once you do, return (x_goal + opposite direction (if applicable), y_goal + opposite_direction
+GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(int x_start, int y_start, int x_current, int y_current, int x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordMap) const
+{
+	//return GraphObject::right;
+	if (numberOfSteps == maxDepth)
+		return GraphObject::none;
+
+	std::queue<Coord> toBeChecked; //Coords checked in our breadth-first search
+	std::map<Coord, Coord> currToOrig; //maps current Coord to the Coord that it came from
+								   //std::queue<Coord> whereICameFrom; //remembers from which Coord the corresponding 'toBeChecked' Coord came from. So we can step backward
+
+
+
+	//std::vector<GraphObject::Direction> steps; //will store correct steps to leave,
+	//give total number of steps with size()
+
+	char a[X_UPPER_BOUND + 1][Y_UPPER_BOUND + 1];
+
+	//determine all the spots the Actor cannot go
+
+	for (int j = 0; j <= Y_UPPER_BOUND; j++)
+		for (int i = 0; i <= X_UPPER_BOUND; i++)
+		{
+			if (isThereDirtAt(i, j))
+				a[i][j] = WALL;
+			else if (isThereABoulderAt(i, j))
+			{
+
+				for (int k = -DISTANCE_INTERACT; k < DISTANCE_INTERACT; k++)
+					for (int l = -DISTANCE_INTERACT; l < DISTANCE_INTERACT; l++)
+						if (!isInvalidLocation(i + k, j + l) && distance(i, j, i + k, j + l) <= DISTANCE_INTERACT)
+							a[i + k][j + l] = WALL;
+			}
+			else
+			{
+				if (isThereSpaceForAnActorHere(i, j))
+					a[i][j] = PATH;
+				else a[i][j] = WALL; //if can't fit, essentially a wall.
+			}
+		}
+
+
+	//to obtain Direction, will have to work backwards, from Goal to Actor
+	// When they finally match, return the opposite direction of that used to reach the Actor
+	//
+
+
+	a[x_current][y_current] = GOAL;
+	a[x_goal][y_goal] = BREADCRUMB;
+
+
+	//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
+
+	// if I'm here, I haven't found my goal yet
+
+	Coord curr = Coord(x_current, y_current);
+
+	CoordType x, y;
+
+	numberOfSteps = 0; //if already at goal, takes 0 steps
+
+	if (x_goal == x_current && y_goal == y_current) //check to see if we're already there
+		return GraphObject::none;
+
+	//std::queue<int> test;
+	//test.push(3);
+
+	toBeChecked.push(curr);
+	//steps.push_back(GraphObject::none);
+
+	while (!toBeChecked.empty() && (numberOfSteps <= maxDepth))
+	{
+		//numberOfSteps++; //every round through this while loop necessarily takes us one step closer to the goal
+		curr = toBeChecked.front();
+		Coord orig = Coord(x_current, y_current); //for every new Coord added to the Map, originated from current position
+		toBeChecked.pop();
+		//steps.erase(steps.begin()); //removes first element, corresponding to the first Coord
+		x = curr.m_x, y = curr.m_y;
+		//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
+		a[x][y] = BREADCRUMB;
+
+
+		if (a[x + LEFT_DIR][y] == GOAL) //if the 'goal' Actor would have to move left to get to the 'caller' Actor
+		{
+			numberOfSteps++;
+			return howToGetFromLocationToGoal(x_start, y_start, x + RIGHT_DIR, y, x, y, numberOfSteps, maxDepth, currToOrig);
+			//^return a base case of the goal being right next to the current position.
+			//we slowly work our way backwards to the starting coordinate (x_start, y_start), doing numberOfSteps++ every time
+			//every time in our base case, we will look at our Map of currToOrig to see which way we came from
+			//so that we step backwards in the optimal Direction toward (x_start,y_start)
+
+			//return GraphObject::right; //the caller should move the opposite of left, i.e., right
+		}
+		else if (a[x + LEFT_DIR][y] == PATH) //otherwise, if I can move there
+		{
+			Coord d(x + LEFT_DIR, y); //make a new Coord
+			currToOrig[d] = curr; //hold somewhere that the new Coord d came from the Coord curr
+			toBeChecked.push(d);
+			//steps.push_back(GraphObject::right); //push *opposite* direction to vector
+		}
+		//repeat thought process for all four cardinal directions
+		if (a[x][y + DOWN_DIR] == GOAL)
+			return GraphObject::up;
+		else if (a[x][y + DOWN_DIR] == PATH)
+		{
+			Coord d(x, y + DOWN_DIR);
+			s.push(d);
+			//steps.push_back(GraphObject::up); //push *opposite* direction to vector
+
+		}
+
+		if (a[x + RIGHT_DIR][y] == GOAL)
+			return GraphObject::left;
+		else if (a[x + RIGHT_DIR][y] == PATH)
+		{
+			Coord d(x + RIGHT_DIR, y);
+			s.push(d);
+			//steps.push_back(GraphObject::left); //push *opposite* direction to vector
+
+		}
+
+		if (a[x][y + UP_DIR] == GOAL)
+			return GraphObject::down;
+		else if (a[x][y + UP_DIR] == PATH)
+		{
+			Coord d(x, y + UP_DIR);
+			s.push(d);
+			//steps.push_back(GraphObject::down); //push *opposite* direction to vector
+
+		}
+
+	}
+
+	//if made it here and didn't return already, can't make it back
+	//(which is worrisome, since there should always be a way back...)
+	return GraphObject::none;
+
+}
+
+bool StudentWorld::isInvalidLocation(Coord c) const
+{ return (c.x() < 0 || c.x() > X_UPPER_BOUND || c.y() < 0 || c.y() > Y_UPPER_BOUND); }
+
+GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(Coord start, Coord curr, Coord goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordToOrig) const
+{
+	//BASE CASES
+	
+	//if I'm already there, no movement
+	if (start == goal)
+		return GraphObject::none;
+
+	//if my numberOfSteps reached my maxDepth (assuming it's a valid maxDepth, which I'll say is >=0),
+	//can't reach it in time
+	if (maxDepth > 0)
+	{
+		if (numberOfSteps == maxDepth)
+			return GraphObject::none;
+	}
+
+	//if I'm one step away, don't need to go searching
+	Coord curr_up = Coord(curr.x(), curr.y() + UP_DIR);
+	Coord curr_down = Coord(curr.x(), curr.y() + DOWN_DIR);
+	Coord curr_left = Coord(curr.x() + LEFT_DIR, curr.y());
+	Coord curr_right = Coord(curr.x() + RIGHT_DIR, curr.y());
+
+	std::vector<Coord> moves = { curr_up, curr_down, curr_left, curr_right };
+	std::vector<GraphObject::Direction> dirs = { GraphObject::up, GraphObject::down, GraphObject::left, GraphObject::right };
+	//dirs matches moves
+
+		
+	//see if I'm one step away
+	for (int i = 0; i < moves.size(); i++)
+	{
+		Coord move = moves[i];
+		if (move == goal)
+		{
+			numberOfSteps++; //count up a step
+
+			//if curr == start, I'm back where I started and can return the corresponding direction
+			if (curr == start)
+			{
+				//numberOfSteps++;
+				return dirs[i]; //returns corresponding direction
+			}
+			//otherwise, I need to work my way back from curr to start
+			else
+			{
+				//numberOfSteps++;
+				return howToGetFromLocationToGoal(start, coordToOrig[curr], curr, numberOfSteps, maxDepth, coordToOrig);
+								//the coordToOrig map looks up where curr came from, and makes that curr.
+								//This means that the second parameter will slowly return to the source of
+								//	all the Coords, i.e., start
+			}
+		}
+	}
+
+
+
+
+	//SEARCH CASE
+
+
+	char a[X_UPPER_BOUND + 1][Y_UPPER_BOUND + 1];
+
+	//determine all the spots the Actor cannot go
+
+	for (int j = 0; j <= Y_UPPER_BOUND; j++)
+		for (int i = 0; i <= X_UPPER_BOUND; i++)
+		{
+			if (isThereDirtAt(i, j))
+				a[i][j] = WALL;
+			else if (isThereABoulderAt(i, j))
+			{
+
+				for (int k = -DISTANCE_INTERACT; k < DISTANCE_INTERACT; k++)
+					for (int l = -DISTANCE_INTERACT; l < DISTANCE_INTERACT; l++)
+						if (!isInvalidLocation(i + k, j + l) && distance(i, j, i + k, j + l) <= DISTANCE_INTERACT)
+							a[i + k][j + l] = WALL;
+			}
+			else
+			{
+				if (isThereSpaceForAnActorHere(i, j))
+					a[i][j] = PATH;
+				else a[i][j] = WALL; //if can't fit, essentially a wall.
+			}
+		}
+
+
+
+
+	a[goal.x()][goal.y()] = GOAL;
+	a[curr.x()][curr.y()] = BREADCRUMB;
+
+	
+	// initial pushing onto the queue
+
+	std::queue<Coord> toBeChecked;
+	toBeChecked.push(curr);
+
+	//loop time!
+	while (!toBeChecked.empty())
+	{
+		curr = toBeChecked.front();
+		toBeChecked.pop();
+
+		curr_up = Coord(curr.x(), curr.y() + UP_DIR);
+		curr_down = Coord(curr.x(), curr.y() + DOWN_DIR);
+		curr_left = Coord(curr.x() + LEFT_DIR, curr.y());
+		curr_right = Coord(curr.x() + RIGHT_DIR, curr.y());
+
+		moves = { curr_up, curr_down, curr_left, curr_right };
+
+		for (int i = 0; i < moves.size(); i++)
+		{
+			Coord c = moves[i];
+
+			if (a[c.x()][c.y()] == GOAL) //if I find my goal
+			{
+				numberOfSteps++; //count up a step
+				return howToGetFromLocationToGoal(start, curr, c, numberOfSteps, maxDepth, coordToOrig);
+				//have it return to a case where curr and goal are right next to each other,
+				//saving the coordToOrig map so that it knows where it was called from
+				// (which leads back to the starting Coord)
+			}
+
+			if (!isInvalidLocation(c) && a[c.x()][c.y()] == PATH) //if I can go there
+			{
+				toBeChecked.push(c); //push into queue
+				coordToOrig[c] = curr; //remember where the coordinate came from
+			}
+		}
+
+
+	}
+
+
+
+
+	//create character map of the situation
+
+
+
+
+
+
+	std::queue<Coord> toBeChecked;
+	coordMap
+
+
+	//nothing worked...
+	return GraphObject::none;
+}
+
+int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int maxDepth) const
+{
+	int i = 0;
+	while (!(x_actor == x_goal && y_actor == y_goal) && i <= maxDepth)
+	{
+		GraphObject::Direction d = howToGetFromLocationToGoal(x_actor, y_actor, x_goal, y_goal);
+		if (d != GraphObject::none) //this means they reached the goal
+		{
+			i++;
+			moveCoordsInDirection(x_actor, y_actor, d);
+		}
+		//then it calls the maze-solving algorithm again and again, until it reaches the goal
+	}
+
+	return i;
+}
 
 bool StudentWorld::isThereABoulderAt(CoordType x, CoordType y) const
 {
@@ -1163,6 +1721,87 @@ bool StudentWorld::isThereABoulderAt(CoordType x, CoordType y) const
 	}
 	return false;
 }
+
+
+bool StudentWorld::amIFacingFrackMan(const Actor* caller) const
+{
+	GraphObject::Direction c_dir = caller->getDirection();
+	CoordType x_c, y_c, x_p, y_p;
+	caller->sendLocation(x_c, y_c);
+	m_player->sendLocation(x_p, y_p);
+
+	int dx = 4, dy = 4; //the 'cone' of vision will be a rectangle of coordinate +- d_coord
+
+	bool result = false;
+
+	switch (c_dir)
+	{
+	case GraphObject::right:
+		//return whether, it's in the above rectangle of (x_p > x_c, y_p-dy <= y_c <= y_p + dy)
+		return (x_p >= x_c && (y_p - dy) <= y_c && y_c <= (y_p + dy));
+	case GraphObject::left:
+		return (x_p <= x_c && (y_p - dy) <= y_c && y_c <= (y_p + dy));
+	case GraphObject::down:
+		return ((x_p - dx) <= x_c && x_c <= (x_p + dx) && y_p <= y_c);
+	case GraphObject::up:
+		return ((x_p - dx) <= x_c && x_c <= (x_p + dx) && y_p >= y_c);
+
+	case GraphObject::none:
+		exit(5); //bad...
+
+
+	}
+
+
+}
+
+//if in the same vertical/horizontal line and there's no dirt in the way, can see the FrackMan
+//if so, return Direction from caller to FrackMan
+//else return GraphObject::none
+GraphObject::Direction StudentWorld::directLineToFrackMan(const Actor* caller) const
+{
+	CoordType x_c, y_c, x_p, y_p;
+	caller->sendLocation(x_c, y_c);
+	m_player->sendLocation(x_p, y_p);
+
+	if (!(x_c == x_p || y_c == y_p)) //then no direct line of sight for sure
+		return GraphObject::none;
+
+	if (x_c == x_p) //on the same vertical line
+	{
+		for (int j = min(y_c, y_p); j < max(y_c, y_p); j++)
+		{
+			if (!isThereSpaceForAnActorHere(x_c, j) || isLocationAffectedByGroup(x_c, j, boulders, INTERACTED))
+			{
+				return GraphObject::none;
+			}
+		}
+		//if made it here, could make it to FrackMan
+		//determine direction
+		if (y_c < y_p)
+			return GraphObject::up;
+		else return GraphObject::down;
+	}
+
+	if (y_c == y_p) //on the same horizontal line
+	{
+		for (int i = min(x_c, x_p); i < max(x_c, x_p); i++)
+		{
+			if (!isThereSpaceForAnActorHere(i, y_c) || isLocationAffectedByGroup(i, y_c, boulders, INTERACTED))
+			{
+				return GraphObject::none;
+			}
+		}
+		//if made it here, could make it to FrackMan
+		//determine direction
+		if (x_c < x_p)
+			return GraphObject::right;
+		else return GraphObject::left;
+	}
+
+
+}
+
 
 
 // Helper functions
@@ -1182,6 +1821,13 @@ std::string prependCharToStringToSize(std::string s, char c, int size)
 
 	return s;
 }
+
+
+double angleBetweenTwoPoints(int x1, int y1, int x2, int y2)
+{
+	return (tan(double(x2 - x1) / (y2 - y1)));
+}
+
 
 
 int min(int x, int y)

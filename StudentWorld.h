@@ -168,7 +168,10 @@ public:
 
 	}
 
-	bool StudentWorld::attemptToInteractWithNearbyActors(const Actor* caller);
+	void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller);
+
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const;
+
 
 
 	void StudentWorld::letPlayerDropGold();
@@ -255,12 +258,18 @@ public:
 
 	GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Actor* caller, CoordType x_goal, CoordType y_goal) const;
 
-	GraphObject::Direction StudentWorld::HowToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const;
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const;
+
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps) const;
 
 
+	int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int maxDepth) const;
 
 	bool StudentWorld::isThereSpaceForAnActorHere(CoordType x, CoordType y) const;
 
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(int x_start, int y_start, int x_current, int y_current, int x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordMap) const;
+
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(Coord start, Coord curr, Coord goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordMap) const;
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
 	bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir);
@@ -278,18 +287,29 @@ public:
 	bool StudentWorld::generateAppropriatePossibleLocation(int& x, int& y, const int& ID);
 
 
-	bool tryToMoveFromLocation(CoordType& x, CoordType& y, const GraphObject::Direction moveDir);
+	bool tryToMoveFromLocation(CoordType& x, CoordType& y, const GraphObject::Direction moveDir) const;
+
+	//bool StudentWorld::bribeEnemy(const Actor* caller) const;
 
 
 	void StudentWorld::moveCoordsInDirection(CoordType& x, CoordType& y, GraphObject::Direction dir) const;
+
+	bool StudentWorld::amIFacingFrackMan(const Actor* caller) const;
+	GraphObject::Direction StudentWorld::directLineToFrackMan(const Actor* caller) const;
+	GraphObject::Direction StudentWorld::canITurnAndMove(const Actor* caller) const;
 
 	//for debugging
 	void StudentWorld::setAllActorsAsVisible();
 
 	bool isInvalidLocation(int x, int y) const { return (x < 0 || x > X_UPPER_BOUND || y < 0 || y > Y_UPPER_BOUND); }
+	bool isInvalidLocation(Coord c) const;
+
+
 
 	int overlap(const Actor* a, const Actor* b) const;
-	bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller) const;
+
+
+	bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller, GraphObject::Direction dir) const;
 	bool StudentWorld::isThereDirtInDirection(GraphObject::Direction dir, CoordType x, CoordType y, CoordType height, CoordType width) const;
 	bool StudentWorld::removeDirtFromLocation(const int& x, const int& y);
 	void StudentWorld::removeDirtForBoulder(const Actor* a);
@@ -314,6 +334,7 @@ private:
 	int m_numberOfTicksToWaitBetweenEnemySpawns;
 	int m_targetEnemyNumber;
 	int m_probabilityHardcoreSpawn;
+	int m_numEnemies;
 	
 	//GraphObject::Direction** m_howToLeave;
 
@@ -334,7 +355,9 @@ private:
 
 // Helper functions
 
+
 double distance(int x1, int y1, int x2, int y2);
+double angleBetweenTwoPoints(int x1, int y1, int x2, int y2);
 int min(int x, int y);
 int max(int x, int y);
 //int overlap(Actor* a, Actor* b);
