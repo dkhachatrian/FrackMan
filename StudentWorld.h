@@ -263,10 +263,13 @@ public:
 	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps) const;
 
 
-	int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const;
+	int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int maxDepth) const;
 
 	bool StudentWorld::isThereSpaceForAnActorHere(CoordType x, CoordType y) const;
 
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(int x_start, int y_start, int x_current, int y_current, int x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordMap) const;
+
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(Coord start, Coord curr, Coord goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordMap) const;
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
 	bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir);
@@ -299,6 +302,9 @@ public:
 	void StudentWorld::setAllActorsAsVisible();
 
 	bool isInvalidLocation(int x, int y) const { return (x < 0 || x > X_UPPER_BOUND || y < 0 || y > Y_UPPER_BOUND); }
+	bool isInvalidLocation(Coord c) const;
+
+
 
 	int overlap(const Actor* a, const Actor* b) const;
 

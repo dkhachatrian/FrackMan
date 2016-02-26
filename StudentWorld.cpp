@@ -1395,14 +1395,20 @@ GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_acto
 
 }
 
-
-GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(int x_actor, int y_actor, int x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const
+#include <map>
+// find goal
+// once you do, return (x_goal + opposite direction (if applicable), y_goal + opposite_direction
+GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(int x_start, int y_start, int x_current, int y_current, int x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordMap) const
 {
 	//return GraphObject::right;
 	if (numberOfSteps == maxDepth)
 		return GraphObject::none;
 
-	std::queue<Coord> s;
+	std::queue<Coord> toBeChecked; //Coords checked in our breadth-first search
+	std::map<Coord, Coord> currToOrig; //maps current Coord to the Coord that it came from
+								   //std::queue<Coord> whereICameFrom; //remembers from which Coord the corresponding 'toBeChecked' Coord came from. So we can step backward
+
+
 
 	//std::vector<GraphObject::Direction> steps; //will store correct steps to leave,
 	//give total number of steps with size()
@@ -1438,48 +1444,57 @@ GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(int x_actor, int
 	//
 
 
-	a[x_actor][y_actor] = GOAL;
+	a[x_current][y_current] = GOAL;
 	a[x_goal][y_goal] = BREADCRUMB;
 
 
 	//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
 
-	Coord c = Coord(x_goal, y_goal);
+	// if I'm here, I haven't found my goal yet
+
+	Coord curr = Coord(x_current, y_current);
 
 	CoordType x, y;
 
 	numberOfSteps = 0; //if already at goal, takes 0 steps
 
-	if (x_goal == x_actor && y_goal == y_actor) //check to see if we're already there
+	if (x_goal == x_current && y_goal == y_current) //check to see if we're already there
 		return GraphObject::none;
 
 	//std::queue<int> test;
 	//test.push(3);
 
-	s.push(c);
+	toBeChecked.push(curr);
 	//steps.push_back(GraphObject::none);
 
-	while (!s.empty() && (numberOfSteps <= maxDepth))
+	while (!toBeChecked.empty() && (numberOfSteps <= maxDepth))
 	{
 		//numberOfSteps++; //every round through this while loop necessarily takes us one step closer to the goal
-		c = s.front();
-		s.pop();
+		curr = toBeChecked.front();
+		Coord orig = Coord(x_current, y_current); //for every new Coord added to the Map, originated from current position
+		toBeChecked.pop();
 		//steps.erase(steps.begin()); //removes first element, corresponding to the first Coord
-		x = c.m_x, y = c.m_y;
+		x = curr.m_x, y = curr.m_y;
 		//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
 		a[x][y] = BREADCRUMB;
 
 
 		if (a[x + LEFT_DIR][y] == GOAL) //if the 'goal' Actor would have to move left to get to the 'caller' Actor
 		{
-			//numberOfSteps++;
-			//if (howToGetFromLocationToGoal(x_actor + RIGHT_DIR, y_actor, x_goal, y_goal, numberOfSteps, maxDepth) != none)
-				return GraphObject::right; //the caller should move the opposite of left, i.e., right
+			numberOfSteps++;
+			return howToGetFromLocationToGoal(x_start, y_start, x + RIGHT_DIR, y, x, y, numberOfSteps, maxDepth, currToOrig);
+			//^return a base case of the goal being right next to the current position.
+			//we slowly work our way backwards to the starting coordinate (x_start, y_start), doing numberOfSteps++ every time
+			//every time in our base case, we will look at our Map of currToOrig to see which way we came from
+			//so that we step backwards in the optimal Direction toward (x_start,y_start)
+
+			//return GraphObject::right; //the caller should move the opposite of left, i.e., right
 		}
 		else if (a[x + LEFT_DIR][y] == PATH) //otherwise, if I can move there
 		{
-			Coord d(x + LEFT_DIR, y); //push the Coordinate to the queue
-			s.push(d);
+			Coord d(x + LEFT_DIR, y); //make a new Coord
+			currToOrig[d] = curr; //hold somewhere that the new Coord d came from the Coord curr
+			toBeChecked.push(d);
 			//steps.push_back(GraphObject::right); //push *opposite* direction to vector
 		}
 		//repeat thought process for all four cardinal directions
@@ -1521,15 +1536,166 @@ GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(int x_actor, int
 
 }
 
+bool StudentWorld::isInvalidLocation(Coord c) const
+{ return (c.x() < 0 || c.x() > X_UPPER_BOUND || c.y() < 0 || c.y() > Y_UPPER_BOUND); }
+
+GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(Coord start, Coord curr, Coord goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordToOrig) const
+{
+	//BASE CASES
+	
+	//if I'm already there, no movement
+	if (start == goal)
+		return GraphObject::none;
+
+	//if my numberOfSteps reached my maxDepth (assuming it's a valid maxDepth, which I'll say is >=0),
+	//can't reach it in time
+	if (maxDepth > 0)
+	{
+		if (numberOfSteps == maxDepth)
+			return GraphObject::none;
+	}
+
+	//if I'm one step away, don't need to go searching
+	Coord curr_up = Coord(curr.x(), curr.y() + UP_DIR);
+	Coord curr_down = Coord(curr.x(), curr.y() + DOWN_DIR);
+	Coord curr_left = Coord(curr.x() + LEFT_DIR, curr.y());
+	Coord curr_right = Coord(curr.x() + RIGHT_DIR, curr.y());
+
+	std::vector<Coord> moves = { curr_up, curr_down, curr_left, curr_right };
+	std::vector<GraphObject::Direction> dirs = { GraphObject::up, GraphObject::down, GraphObject::left, GraphObject::right };
+	//dirs matches moves
+
+		
+	//see if I'm one step away
+	for (int i = 0; i < moves.size(); i++)
+	{
+		Coord move = moves[i];
+		if (move == goal)
+		{
+			numberOfSteps++; //count up a step
+
+			//if curr == start, I'm back where I started and can return the corresponding direction
+			if (curr == start)
+			{
+				//numberOfSteps++;
+				return dirs[i]; //returns corresponding direction
+			}
+			//otherwise, I need to work my way back from curr to start
+			else
+			{
+				//numberOfSteps++;
+				return howToGetFromLocationToGoal(start, coordToOrig[curr], curr, numberOfSteps, maxDepth, coordToOrig);
+								//the coordToOrig map looks up where curr came from, and makes that curr.
+								//This means that the second parameter will slowly return to the source of
+								//	all the Coords, i.e., start
+			}
+		}
+	}
 
 
-int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
+
+
+	//SEARCH CASE
+
+
+	char a[X_UPPER_BOUND + 1][Y_UPPER_BOUND + 1];
+
+	//determine all the spots the Actor cannot go
+
+	for (int j = 0; j <= Y_UPPER_BOUND; j++)
+		for (int i = 0; i <= X_UPPER_BOUND; i++)
+		{
+			if (isThereDirtAt(i, j))
+				a[i][j] = WALL;
+			else if (isThereABoulderAt(i, j))
+			{
+
+				for (int k = -DISTANCE_INTERACT; k < DISTANCE_INTERACT; k++)
+					for (int l = -DISTANCE_INTERACT; l < DISTANCE_INTERACT; l++)
+						if (!isInvalidLocation(i + k, j + l) && distance(i, j, i + k, j + l) <= DISTANCE_INTERACT)
+							a[i + k][j + l] = WALL;
+			}
+			else
+			{
+				if (isThereSpaceForAnActorHere(i, j))
+					a[i][j] = PATH;
+				else a[i][j] = WALL; //if can't fit, essentially a wall.
+			}
+		}
+
+
+
+
+	a[goal.x()][goal.y()] = GOAL;
+	a[curr.x()][curr.y()] = BREADCRUMB;
+
+	
+	// initial pushing onto the queue
+
+	std::queue<Coord> toBeChecked;
+	toBeChecked.push(curr);
+
+	//loop time!
+	while (!toBeChecked.empty())
+	{
+		curr = toBeChecked.front();
+		toBeChecked.pop();
+
+		curr_up = Coord(curr.x(), curr.y() + UP_DIR);
+		curr_down = Coord(curr.x(), curr.y() + DOWN_DIR);
+		curr_left = Coord(curr.x() + LEFT_DIR, curr.y());
+		curr_right = Coord(curr.x() + RIGHT_DIR, curr.y());
+
+		moves = { curr_up, curr_down, curr_left, curr_right };
+
+		for (int i = 0; i < moves.size(); i++)
+		{
+			Coord c = moves[i];
+
+			if (a[c.x()][c.y()] == GOAL) //if I find my goal
+			{
+				numberOfSteps++; //count up a step
+				return howToGetFromLocationToGoal(start, curr, c, numberOfSteps, maxDepth, coordToOrig);
+				//have it return to a case where curr and goal are right next to each other,
+				//saving the coordToOrig map so that it knows where it was called from
+				// (which leads back to the starting Coord)
+			}
+
+			if (!isInvalidLocation(c) && a[c.x()][c.y()] == PATH) //if I can go there
+			{
+				toBeChecked.push(c); //push into queue
+				coordToOrig[c] = curr; //remember where the coordinate came from
+			}
+		}
+
+
+	}
+
+
+
+
+	//create character map of the situation
+
+
+
+
+
+
+	std::queue<Coord> toBeChecked;
+	coordMap
+
+
+	//nothing worked...
+	return GraphObject::none;
+}
+
+int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int maxDepth) const
 {
 	int i = 0;
-	while (x_actor != x_goal || y_actor != y_goal)
+	while (!(x_actor == x_goal && y_actor == y_goal) && i <= maxDepth)
 	{
 		GraphObject::Direction d = howToGetFromLocationToGoal(x_actor, y_actor, x_goal, y_goal);
-		if (d != GraphObject::none)
+		if (d != GraphObject::none) //this means they reached the goal
 		{
 			i++;
 			moveCoordsInDirection(x_actor, y_actor, d);

@@ -859,11 +859,12 @@ void HardcoreProtester::respondToSquirt(Squirt* squirt, double distanceOfInterac
 int HardcoreProtester::howFarAwayAmIFromFrackMan() const
 {
 	CoordType x, y, a, b;
-	int numberOfSteps;
+	//int numberOfSteps = 0;
 	sendLocation(x, y);
 	getWorld()->getPlayer()->sendLocation(a, b);
-	getWorld()->howToGetFromLocationToGoal(x, y, a, b, numberOfSteps, getDetectionRange());
-	return numberOfSteps;
+	return getWorld()->numberOfStepsFromLocationToGoal(x, y, a, b, getDetectionRange());
+	//getWorld()->howToGetFromLocationToGoal(x, y, a, b, numberOfSteps, getDetectionRange()); //will stop if numberOfSteps == getDetectionRange()
+	//return numberOfSteps;
 }
 
 
@@ -894,7 +895,7 @@ GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
 	sendLocation(x_a, y_a);
 	getWorld()->getPlayer()->sendLocation(x_p, y_p);
 
-	if (howFarAwayAmIFromFrackMan() <= getDetectionRange())
+	if (howFarAwayAmIFromFrackMan() < getDetectionRange())
 	{
 		Direction d = getWorld()->tellMeHowToGetToMyGoal(this, x_p, y_p);
 		return d;

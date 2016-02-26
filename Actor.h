@@ -55,11 +55,21 @@ enum Group { player, enemies, boulders, goodies, squirts, gold, bribes, anyone, 
 
 struct Coord
 {
+	Coord()
+	{
+		m_x = -1;
+		m_y = -1;
+	}
+
 	Coord(CoordType x, CoordType y)
 	{
 		m_x = x;
 		m_y = y;
 	}
+	CoordType x() const { return m_x; }
+	CoordType y() const { return m_y; }
+
+	bool operator==(Coord other) { return (x() == other.x() && y() == other.y()); }
 
 	CoordType m_x, m_y;
 };
