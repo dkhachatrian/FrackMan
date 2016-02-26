@@ -170,6 +170,9 @@ public:
 
 	void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller);
 
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const;
+
+
 
 	void StudentWorld::letPlayerDropGold();
 	void letPlayerUseSonar();
@@ -283,7 +286,7 @@ public:
 
 	bool tryToMoveFromLocation(CoordType& x, CoordType& y, const GraphObject::Direction moveDir) const;
 
-	bool StudentWorld::bribeEnemy(const Actor* caller) const;
+	//bool StudentWorld::bribeEnemy(const Actor* caller) const;
 
 
 	void StudentWorld::moveCoordsInDirection(CoordType& x, CoordType& y, GraphObject::Direction dir) const;

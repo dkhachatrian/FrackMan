@@ -80,7 +80,6 @@ void StudentWorld::setAllActorsAsVisible()
 
 int StudentWorld::init()
 {
-
 	initDirt();
 	initializeDistanceActionMap();
 	setUpDirt();
@@ -502,6 +501,10 @@ bool StudentWorld::isThereDirtInDirectionOfActor(const Actor* caller, GraphObjec
 
 bool StudentWorld::isThereDirtInDirection(GraphObject::Direction dir, CoordType x, CoordType y, CoordType height, CoordType width) const
 {
+	CoordType x_old = x, y_old = y;
+	moveCoordsInDirection(x_old, y_old, dir);
+	if (x_old > X_UPPER_BOUND || y_old > Y_UPPER_BOUND)
+		return true; //pretend like the boundaries are 'dirt' so that it try moving through the boundary
 
 	switch (dir)
 	{
@@ -761,7 +764,7 @@ void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 		{
 			for (int k = 0; k < DISTANCES.size(); k++)
 			{
-				if (distance(x1, y1, x2, y2) < DISTANCES[k])
+				if (distance(x1, y1, x2, y2) <= DISTANCES[k])
 				{
 					switch (m_actors[j]->whatGroupAmI())
 					{
@@ -993,6 +996,7 @@ bool StudentWorld::tryToMoveFromLocation(CoordType& x, CoordType& y, GraphObject
 	{
 		return false; //don't move, no animation either
 	}
+
 
 	//by this point, FrackMan will have dug through
 	// and no other Actors can move through Dirt
@@ -1391,6 +1395,126 @@ GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_acto
 
 }
 
+
+GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const
+{
+	//return GraphObject::right;
+
+
+	std::queue<Coord> s;
+
+	//std::vector<GraphObject::Direction> steps; //will store correct steps to leave,
+	//give total number of steps with size()
+
+	char a[X_UPPER_BOUND + 1][Y_UPPER_BOUND + 1];
+
+	//determine all the spots the Actor cannot go
+
+	for (int j = 0; j <= Y_UPPER_BOUND; j++)
+		for (int i = 0; i <= X_UPPER_BOUND; i++)
+		{
+			if (isThereDirtAt(i, j))
+				a[i][j] = WALL;
+			else if (isThereABoulderAt(i, j))
+			{
+
+				for (int k = -DISTANCE_INTERACT; k < DISTANCE_INTERACT; k++)
+					for (int l = -DISTANCE_INTERACT; l < DISTANCE_INTERACT; l++)
+						if (!isInvalidLocation(i + k, j + l) && distance(i, j, i + k, j + l) <= DISTANCE_INTERACT)
+							a[i + k][j + l] = WALL;
+			}
+			else
+			{
+				if (isThereSpaceForAnActorHere(i, j))
+					a[i][j] = PATH;
+				else a[i][j] = WALL; //if can't fit, essentially a wall.
+			}
+		}
+
+
+	//to obtain Direction, will have to work backwards, from Goal to Actor
+	// When they finally match, return the opposite direction of that used to reach the Actor
+	//
+
+
+	a[x_actor][y_actor] = GOAL;
+	a[x_goal][y_goal] = BREADCRUMB;
+
+
+	//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
+
+	Coord c = Coord(x_goal, y_goal);
+
+	CoordType x, y;
+
+	numberOfSteps = 0; //if already at goal, takes 0 steps
+
+	if (x_goal == x_actor && y_goal == y_actor) //check to see if we're already there
+		return GraphObject::none;
+
+	//std::queue<int> test;
+	//test.push(3);
+
+	s.push(c);
+	//steps.push_back(GraphObject::none);
+
+	while (!s.empty() && (numberOfSteps <= maxDepth))
+	{
+		numberOfSteps++; //every round through this while loop necessarily takes us one step closer to the goal
+		c = s.front();
+		s.pop();
+		//steps.erase(steps.begin()); //removes first element, corresponding to the first Coord
+		x = c.m_x, y = c.m_y;
+		//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
+		a[x][y] = BREADCRUMB;
+
+
+		if (a[x + LEFT_DIR][y] == GOAL) //if the 'goal' Actor would have to move left to get to the 'caller' Actor
+			return GraphObject::right; //the caller should move the opposite of left, i.e., right
+		else if (a[x + LEFT_DIR][y] == PATH) //otherwise, if I can move there
+		{
+			Coord d(x + LEFT_DIR, y); //push the Coordinate to the queue
+			s.push(d);
+			//steps.push_back(GraphObject::right); //push *opposite* direction to vector
+		}
+		//repeat thought process for all four cardinal directions
+		if (a[x][y + DOWN_DIR] == GOAL)
+			return GraphObject::up;
+		else if (a[x][y + DOWN_DIR] == PATH)
+		{
+			Coord d(x, y + DOWN_DIR);
+			s.push(d);
+			//steps.push_back(GraphObject::up); //push *opposite* direction to vector
+
+		}
+
+		if (a[x + RIGHT_DIR][y] == GOAL)
+			return GraphObject::left;
+		else if (a[x + RIGHT_DIR][y] == PATH)
+		{
+			Coord d(x + RIGHT_DIR, y);
+			s.push(d);
+			//steps.push_back(GraphObject::left); //push *opposite* direction to vector
+
+		}
+
+		if (a[x][y + UP_DIR] == GOAL)
+			return GraphObject::down;
+		else if (a[x][y + UP_DIR] == PATH)
+		{
+			Coord d(x, y + UP_DIR);
+			s.push(d);
+			//steps.push_back(GraphObject::down); //push *opposite* direction to vector
+
+		}
+
+	}
+
+	//if made it here and didn't return already, can't make it back
+	//(which is worrisome, since there should always be a way back...)
+	return GraphObject::none;
+
+}
 
 
 

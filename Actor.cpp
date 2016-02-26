@@ -465,8 +465,8 @@ void FrackMan::getHurt(int damage)
 
 void FrackMan::respondToEnemy(Protester* enemy, double distanceOfInteraction)
 {
-	getHurt(DAMAGE_YELL);
-	enemy->respondToPlayer(distanceOfInteraction); //called here so that
+	//getHurt(DAMAGE_YELL);
+	//enemy->respondToPlayer(this, distanceOfInteraction); //called here so that
 												// enemy can still call Actor::doSomething() and respond to other Actors
 												// (e.g., Squirts)
 }
@@ -553,7 +553,7 @@ int Protester::doSomething()
 		}
 	}
 	*/
-	Direction dir = tryToGetToFrackMan();
+	//Direction dir = tryToGetToFrackMan();
 	/*
 	//determine if Protester will rest this turn, or get closer to resting
 	if (m_currentRestTick % m_restTicks == (m_restTicks - 1))
@@ -576,7 +576,7 @@ int Protester::doSomething()
 	}
 	*/
 
-
+	Direction dir = none;
 
 	switch (m_pState)
 	{
@@ -620,9 +620,9 @@ int Protester::doSomething()
 		//conveniently, DISCOVERED == 4 == shouting distance of Protester
 		if (getWorld()->isActorAffectedByGroup(this, player, DISCOVERED) && getWorld()->amIFacingFrackMan(this))
 		{
-			getWorld()->playSound(SOUND_PROTESTER_YELL);
-			getWorld()->getPlayer()->changeHealthBy(-2);
-			setProtesterState(coolingDown);
+			//getWorld()->playSound(SOUND_PROTESTER_YELL);
+			//getWorld()->getPlayer()->changeHealthBy(-2);
+			//setProtesterState(coolingDown);
 			return STATIONARY;
 		}
 
@@ -652,10 +652,9 @@ int Protester::doSomething()
 			Direction r_dir = generateRandomDirection();
 			CoordType x = getX(), y = getY();
 			int i = 0;
-			while (!getWorld()->tryToMoveFromLocation(x, y, r_dir) && i < 20) //shouldn't take more than 20 tries...
+			while (getWorld()->isThereDirtInDirectionOfActor(this, r_dir) || !getWorld()->tryToMoveFromLocation(x, y, r_dir)) //shouldn't take more than 20 tries...
 			{
 				r_dir = generateRandomDirection();
-				i++;
 			}
 			setDir(r_dir);
 			rollNumberOfTimesToMoveInCurrentDirection();
@@ -709,12 +708,15 @@ void Protester::bribeMe()
 
 
 
-void Protester::respondToPlayer(double distanceOfInteraction)
+void Protester::respondToPlayer(FrackMan* player, double distanceOfInteraction)
 {
 	if (!amIAnnoyed() && distanceOfInteraction <= DISTANCE_YELL && getWorld()->amIFacingFrackMan(this))
 	{
 		getWorld()->playSound(SOUND_PROTESTER_YELL);
+		player->getHurt(DAMAGE_YELL);
 		setAnnoyed(true);
+		setResting(true);
+		setAnnoyedTick(0);
 		setMaxAnnoyedTickAs(15);
 		//setMaxAnnoyedRestTickAs(15);
 	}
@@ -743,7 +745,7 @@ void Protester::respondToSquirt(Squirt* squirt, double distanceOfInteraction)
 	}
 }
 
-void Protester::respondToBoulder(double distanceOfInteraction)
+void Protester::respondToBoulder(Boulder* boulder, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT && getProtesterState() != leaving)
 	{
@@ -770,6 +772,8 @@ void Protester::respondToBribe(Gold* bribe, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
+		getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
+		bribe->die();
 		startToLeave();
 		getWorld()->increaseScore(25); //points for bribing
 	}
@@ -812,41 +816,71 @@ void Protester::setRestTick()
 }
 
 
+
+
+
+
 void HardcoreProtester::respondToBribe(Gold* bribe, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
 		getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
 		setAnnoyed(true);
+		setResting(true);
 		setMaxAnnoyedTickAs(max(50, 100 - getWorld()->getLevel() * 10));
+		setAnnoyedTick(0); // reset tick time
 		getWorld()->increaseScore(50); //points for bribe (different from regular Protester)
+		bribe->die();
 	}
 }
 
+
+//need to make this naturally come from Protester:respondToSquirt (only difference is points...)
 void HardcoreProtester::respondToSquirt(Squirt* squirt, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
-		//getHurt(DAMAGE_SQUIRT);
-
+		squirt->die();
+		getHurt(DAMAGE_SQUIRT);
 		if (didIDie())
 		{
 			performGiveUpAction();
-			getWorld()->increaseScore(250); //score for killing with squirt DIFFERENT compared to regular Protester
+			getWorld()->increaseScore(100); //score for killing with squirt
+		}
+		else
+		{
+			getWorld()->playSound(SOUND_PROTESTER_ANNOYED);
+			setAnnoyed(true);
+			setResting(true);
+			setMaxAnnoyedTickAs(max(50, 100 - getWorld()->getLevel() * 10));
+			setAnnoyedTick(0); //reset it to 0
+							   //performAnnoyedAction();
 		}
 	}
 }
 
+// will stop counting how far away it is after going past getDetectionRange() depth
 int HardcoreProtester::howFarAwayAmIFromFrackMan() const
 {
 	CoordType x, y, a, b;
 	int numberOfSteps;
 	sendLocation(x, y);
 	getWorld()->getPlayer()->sendLocation(a, b);
-	getWorld()->howToGetFromLocationToGoal(x, y, a, b, numberOfSteps);
+	getWorld()->howToGetFromLocationToGoal(x, y, a, b, numberOfSteps, getDetectionRange());
 	return numberOfSteps;
 }
 
+/*
+GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
+{
+	if (howFarAwayAmIFromFrackMan() > getDetectionRange())
+		return Protester::tryToGetToFrackMan();
+
+	else return getWorld()->tellMeHowToGetToMyGoal(this, getWorld()->getPlayer()->getX(), getWorld()->getPlayer()->getY());
+
+
+}
+*/
 
 
 
@@ -880,18 +914,19 @@ int HardcoreProtester::doSomething()
 void HardcoreProtester::setDetectionRange()
 {
 	m_detectionRange = 16 + getWorld()->getLevel() * 2;
+	//m_detectionRange = 200;
 }
 
 GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
 {
-	if (getWorld()->distanceBetweenActors(this, getWorld()->getPlayer()) > m_detectionRange) //no reason to use taxing method
-		Protester::tryToGetToFrackMan();
+	//if (getWorld()->distanceBetweenActors(this, getWorld()->getPlayer()) > getDetectionRange()) //no reason to use taxing method
+	//	Protester::tryToGetToFrackMan();
 
 	CoordType x_a, x_p, y_a, y_p;
 	sendLocation(x_a, y_a);
 	getWorld()->getPlayer()->sendLocation(x_p, y_p);
 
-	if (howFarAwayAmIFromFrackMan() <= m_detectionRange)
+	if (howFarAwayAmIFromFrackMan() <= getDetectionRange())
 	{
 		Direction d = getWorld()->tellMeHowToGetToMyGoal(this, x_p, y_p);
 		return d;
@@ -1179,8 +1214,8 @@ void Gold::respondToEnemy(Protester* enemy, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT && whatGroupAmI() == bribes)
 	{
-		getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
-		die();
+		//getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
+		//die();
 	}
 	//otherwise, it doesn't respond to enemy
 }

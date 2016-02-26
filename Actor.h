@@ -420,7 +420,7 @@ const int REST_TICK_YELL = 15;
 class Protester :public DynamicObject
 {
 public:
-	Protester(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_PROTESTER) :DynamicObject(IID_PROTESTER, DEPTH_PROTESTER, sw, x, y)
+	Protester(CoordType x, CoordType y, StudentWorld* sw, int IID = IID_PROTESTER) :DynamicObject(IID, DEPTH_PROTESTER, sw, x, y)
 	{
 		setVisibility(true);
 		setDir(left);
@@ -484,9 +484,9 @@ public:
 	virtual void performGiveUpAction();
 	//virtual void Protester::performAnnoyedAction();
 
-	virtual void Protester::respondToPlayer(double distanceOfInteraction);
+	virtual void Protester::respondToPlayer(FrackMan* player, double distanceOfInteraction);
 	virtual void respondToSquirt(Squirt* squirt, double distanceOfInteraction);
-	virtual void Protester::respondToBoulder(double distanceOfInteraction);
+	virtual void Protester::respondToBoulder(Boulder* boulder, double distanceOfInteraction);
 	virtual void Protester::respondToBribe(Gold* bribe, double distanceOfInteraction);
 	void Protester::startToLeave();
 
@@ -534,15 +534,15 @@ public:
 
 	virtual void HardcoreProtester::respondToSquirt(Squirt* squirt, double distanceOfInteraction);
 	virtual void respondToBribe(Gold* bribe, double distanceOfInteraction);
+	virtual GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const;
 
 
-
-	virtual Direction tryToGetToFrackMan() const;
+	//virtual Direction tryToGetToFrackMan() const;
 	virtual void bribeMe();
 
 protected:
 	void setDetectionRange();
-	int getDirectionRange() const { return m_detectionRange; }
+	int getDetectionRange() const { return m_detectionRange; }
 private:
 	//bool m_bribed;
 	int m_detectionRange;
