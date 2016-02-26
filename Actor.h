@@ -160,7 +160,7 @@ public:
 
 	//doSomething()
 	virtual int doSomething();
-	virtual void attemptToInteractWithActors();
+	//virtual void attemptToInteractWithActors();
 	//virtual void interactWithActor(const Actor* other, double distanceOfInteraction);
 	virtual void respondToPlayer(FrackMan* player, double distanceOfInteraction) {};
 	virtual void respondToEnemy(Protester* enemy, double distanceOfInteraction) {};
@@ -443,7 +443,7 @@ public:
 	virtual ~Protester() {};
 
 	virtual int doSomething();
-	virtual Direction tryToGetToFrackMan() const;
+	virtual Direction tryToGetToFrackMan();
 
 	void setResting(bool x) { m_resting = x; }
 
@@ -455,6 +455,9 @@ public:
 	virtual void bribeMe();
 	//virtual void respondToGold();
 	int getDirTimes() const { return m_numTimesCurrentDir; }
+	virtual bool Protester::attemptMove();
+	virtual Direction chooseDirection();
+
 
 	//void resetTick(int& t) { t = 0; }
 	
@@ -537,12 +540,12 @@ public:
 
 
 
-	virtual Direction tryToGetToFrackMan() const;
+	virtual Direction tryToGetToFrackMan();
 	virtual void bribeMe();
 
 protected:
 	void setDetectionRange();
-	int getDirectionRange() const { return m_detectionRange; }
+	int getDetectionRange() const { return m_detectionRange; }
 private:
 	//bool m_bribed;
 	int m_detectionRange;

@@ -736,7 +736,29 @@ void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 
 	CoordType x1, y1, x2, y2;
 	caller->sendLocation(x1, y1);
+	/*
+	Actor* p;
 
+	//re-obtain the information about who's calling this function
+	if (dynamic_cast<FrackMan*>(caller)) //i.e. doesn't equal nullptr
+		p = dynamic_cast<FrackMan*>(caller);
+	if (dynamic_cast<Protester*>(caller))
+		p = dynamic_cast<Protester*>(caller);
+	if (dynamic_cast<Squirt*>(caller))
+		p = dynamic_cast<Squirt*>(caller);
+	if (dynamic_cast<Boulder*>(caller))
+		p = dynamic_cast<Boulder*>(caller);
+	if (dynamic_cast<Water*>(caller))
+		p = dynamic_cast<Water*>(caller);
+	if (dynamic_cast<Sonar*>(caller))
+		p = dynamic_cast<Sonar*>(caller);
+	if (dynamic_cast<Gold*>(caller))
+		p = dynamic_cast<Gold*>(caller);
+	if (dynamic_cast<Barrel*>(caller))
+		p = dynamic_cast<Barrel*>(caller);
+	if (dynamic_cast<Squirt*>(caller))
+		p = dynamic_cast<Squirt*>(caller);
+	*/
 
 	//first check against other players
 	m_player->sendLocation(x2, y2);
@@ -745,7 +767,7 @@ void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 	{
 		if (caller == m_player)
 			break; //don't match player with itself
-		if (distance(x1, y1, x2, y2) < DISTANCES[k])
+		if (distance(x1, y1, x2, y2) <= DISTANCES[k])
 		{
 			caller->respondToPlayer(m_player, DISTANCES[k]);
 		}
@@ -767,37 +789,37 @@ void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 					{
 					case enemies:
 					{
-						Protester* p = dynamic_cast<Protester*>(m_actors[j]);
-						if (p != nullptr) //ought to be the case
-							caller->respondToEnemy(p, DISTANCES[k]);
+						Protester* q = dynamic_cast<Protester*>(m_actors[j]);
+						if (q != nullptr) //ought to be the case
+							caller->respondToEnemy(q, DISTANCES[k]);
 						break;
 					}
 					case goodies:
 					{
-						Goodie* p = dynamic_cast<Goodie*>(m_actors[j]);
-						if (p != nullptr)
-							caller->respondToGoodie(p, DISTANCES[k]);
+						Goodie* q = dynamic_cast<Goodie*>(m_actors[j]);
+						if (q != nullptr)
+							caller->respondToGoodie(q, DISTANCES[k]);
 						break;
 					}
 					case boulders:
 					{
-						Boulder* p = dynamic_cast<Boulder*>(m_actors[j]);
-						if (p != nullptr)
-							caller->respondToBoulder(p, DISTANCES[k]);
+						Boulder* q = dynamic_cast<Boulder*>(m_actors[j]);
+						if (q != nullptr)
+							caller->respondToBoulder(q, DISTANCES[k]);
 						break;
 					}
 					case squirts:
 					{
-						Squirt* p = dynamic_cast<Squirt*>(m_actors[j]);
-						if (p != nullptr)
-							caller->respondToSquirt(p, DISTANCES[k]);
+						Squirt* q = dynamic_cast<Squirt*>(m_actors[j]);
+						if (q != nullptr)
+							caller->respondToSquirt(q, DISTANCES[k]);
 						break;
 					}
 					case bribes:
 					{
-						Gold* p = dynamic_cast<Gold*>(m_actors[j]);
-						if (p != nullptr)
-							caller->respondToBribe(p, DISTANCES[k]);
+						Gold* q = dynamic_cast<Gold*>(m_actors[j]);
+						if (q != nullptr)
+							caller->respondToBribe(q, DISTANCES[k]);
 						break;
 					}
 					}

@@ -33,7 +33,7 @@ int Actor::doSomething()
 	if (isDead())
 		return DEAD;
 
-	attemptToInteractWithActors(); //where all the interacting takes place
+	getWorld()->attemptToInteractWithNearbyActors(this); //where all the interacting takes place
 
 	if (doITick())
 	{
@@ -58,10 +58,6 @@ void Actor::performTickAction()
 }
 
 
-void Actor::attemptToInteractWithActors()
-{
-	getWorld()->attemptToInteractWithNearbyActors(this);
-}
 
 
 /*
@@ -484,8 +480,16 @@ int Protester::doSomething()
 	if (isDead())
 		return DEAD;
 
+	//'death' (remove Actor) condition
+	if((getX() == X_UPPER_BOUND && getY() == Y_UPPER_BOUND) && (getProtesterState() == leaving))
+		{
+			die();
+			return DEAD;
+		}
+
 	if (getProtesterState() != leaving)
-		Actor::doSomething();
+		getWorld()->attemptToInteractWithNearbyActors(this);
+		//Actor::doSomething(); //only interact with other Actors when in an OK or resting state
 
 	//then we'll see if it should be resting due to mandatory rest ticking
 
@@ -521,78 +525,63 @@ int Protester::doSomething()
 		}
 	}
 
-
-
-
-
-
-
-
-
-
-	if (didIDie()) //maybe from Boulder or something
+	//if I died (maybe from a Boulder or something)
+	if (didIDie())
 	{
 		setCurrentRestTick(0);
 		setProtesterState(leaving);
 		//performGiveUpAction();
 	}
 
-	/*
-	if (amIAnnoyed())
+	Direction dir = chooseDirection();
+
+	bool result = DynamicObject::attemptMove(dir);
+
+
+	return 42; //always the answer
+
+}
+
+
+bool Protester::attemptMove()
+{
+	Direction dir = chooseDirection();
+
+
+
+
+
+	//then move
+	bool result = DynamicObject::attemptMove(getDirection());
+
+	if (!result)
 	{
-		if (m_annoyedRestTick < getMaxRestTickCount())
-		{
-			m_annoyedRestTick++;
-			return STATIONARY;
-		}
-		else
-		{
-			//m_annoyedRestTick = 0;
-			setAnnoyedTickCount(0);
-			setAnnoyed(false);
-		}
+		m_numTimesCurrentDir = 0; //will make it re-roll for a new Direction next tick
 	}
-	*/
-	Direction dir = tryToGetToFrackMan();
-	/*
-	//determine if Protester will rest this turn, or get closer to resting
-	if (m_currentRestTick % m_restTicks == (m_restTicks - 1))
-	{
-		m_currentRestTick = 0;
-		return STATIONARY;
-	}
-	else m_currentRestTick++;
+	
+	return result;
 
-	// Gold always acts on Protester, even as he's leaving
+	
+}
 
 
 
+GraphObject::Direction Protester::chooseDirection()
+{
+	Direction dir = none;
 
-
-	if (getProtesterState() != resting)
-	{
-		m_currentNonrestTick++;
-		//m_currentRestTick++;
-	}
-	*/
-
-
-
-	switch (m_pState)
+	switch (getProtesterState())
 	{
 	case leaving: //ignore other places, and instead try moving
 	{
-		if (getX() == X_UPPER_BOUND && getY() == Y_UPPER_BOUND)
-		{
-			die();
-			return DEAD;
-		}
-		//otherwise, head over there
+		//already checked in doSomething() to see if he's reached his goal
+		//since he hasn't,
+		//head over there
 		dir = getWorld()->tellMeHowToGetToMyGoal(this, X_UPPER_BOUND, Y_UPPER_BOUND);
-		attemptMove(dir);
-		return MOVED;
+		return dir;
 		break;
 	}
+	/*
 	case resting: //no longer used...
 	{
 		if (didIDie())
@@ -613,32 +602,37 @@ int Protester::doSomething()
 		return STATIONARY;
 		break;
 	}
+	*/
 	case OK:
-
+	{
 		//attempt to yell at FrackMan
 
+		/*
 		//conveniently, DISCOVERED == 4 == shouting distance of Protester
 		if (getWorld()->isActorAffectedByGroup(this, player, DISCOVERED) && getWorld()->amIFacingFrackMan(this))
 		{
-			getWorld()->playSound(SOUND_PROTESTER_YELL);
-			getWorld()->getPlayer()->changeHealthBy(-2);
-			setProtesterState(coolingDown);
-			return STATIONARY;
+		getWorld()->playSound(SOUND_PROTESTER_YELL);
+		getWorld()->getPlayer()->changeHealthBy(-2);
+		setProtesterState(coolingDown);
+		return STATIONARY;
 		}
-
-		//attempt to walk toward FrackMan intelligently (Direction and ability to see FrackMan being determined by the tryToGetToFrackMan() function)
+		*/
+		//attempt to walk toward FrackMan (Direction and ability to see FrackMan being determined by the tryToGetToFrackMan() function)
 		if (!getWorld()->isActorAffectedByGroup(this, player, DISCOVERED))
 		{
+
 			Direction dir = tryToGetToFrackMan();
 
 			if (dir != none)
 			{
-				m_numTimesCurrentDir = 0;
-				setDir(dir);
+
+				return dir;
+				/*
 				bool result = DynamicObject::attemptMove(dir);
 				if (result)
 					return MOVED;
 				else exit(5); //there's a problem with a function here if result != true ...
+				*/
 			}
 		}
 
@@ -646,7 +640,8 @@ int Protester::doSomething()
 
 		//walk in a Direction
 		//first determine the Direction
-		
+
+		//generate random direction if I should
 		if (getDirTimes() == 0)
 		{
 			Direction r_dir = generateRandomDirection();
@@ -660,45 +655,33 @@ int Protester::doSomething()
 			setDir(r_dir);
 			rollNumberOfTimesToMoveInCurrentDirection();
 		}
-		else
+		//turn if I should
+		else if (m_currentNonrestTick > 200)
 		{
-			if (m_currentNonrestTick > 200)
+			Direction d = getWorld()->canITurnAndMove(this);
+			if (d != none)
 			{
-				Direction d = getWorld()->canITurnAndMove(this);
-				if (d != none)
-				{
-					setDir(d);
-					rollNumberOfTimesToMoveInCurrentDirection();
-					m_currentNonrestTick = 0;
-				}
+				setDir(d);
+				rollNumberOfTimesToMoveInCurrentDirection();
+				m_currentNonrestTick = 0;
 			}
 		}
-
-
-		//then move
-		bool result = DynamicObject::attemptMove(getDirection());
-
-		if (!result)
-		{
-			m_numTimesCurrentDir = 0; //will make it re-roll for a new Direction next tick
-			return STATIONARY;
-		}
-		else return MOVED;
-
-
-		//do some stuff
-
-		break;
 	}
 
-
-
-
+	return getDirection(); //by this point, return wherever I'm facing
+	}
 }
 
-GraphObject::Direction Protester::tryToGetToFrackMan() const
+GraphObject::Direction Protester::tryToGetToFrackMan()
 {
-	return getWorld()->directLineToFrackMan(this);
+	Direction dir = getWorld()->directLineToFrackMan(this);
+
+	if (dir != none)
+	{
+		m_numTimesCurrentDir = 0;
+		setDir(dir); //set in proper direction before sending it back to calling function
+	}
+	return dir;
 }
 
 void Protester::bribeMe()
@@ -724,8 +707,9 @@ void Protester::respondToSquirt(Squirt* squirt, double distanceOfInteraction)
 {
 	if (distanceOfInteraction <= DISTANCE_INTERACT)
 	{
-		squirt->die();
+
 		getHurt(DAMAGE_SQUIRT);
+		squirt->die();
 		if (didIDie())
 		{
 			performGiveUpAction();
@@ -882,21 +866,23 @@ void HardcoreProtester::setDetectionRange()
 	m_detectionRange = 16 + getWorld()->getLevel() * 2;
 }
 
-GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
+GraphObject::Direction HardcoreProtester::tryToGetToFrackMan()
 {
-	if (getWorld()->distanceBetweenActors(this, getWorld()->getPlayer()) > m_detectionRange) //no reason to use taxing method
-		Protester::tryToGetToFrackMan();
+
+	//if (getWorld()->distanceBetweenActors(this, getWorld()->getPlayer()) > getDetectionRange()) //no reason to use taxing method
+	//	Protester::tryToGetToFrackMan();
 
 	CoordType x_a, x_p, y_a, y_p;
 	sendLocation(x_a, y_a);
 	getWorld()->getPlayer()->sendLocation(x_p, y_p);
 
+	//am I close enough for 'smart' pathfinding?
 	if (howFarAwayAmIFromFrackMan() <= m_detectionRange)
 	{
 		Direction d = getWorld()->tellMeHowToGetToMyGoal(this, x_p, y_p);
 		return d;
 	}
-	else return Protester::tryToGetToFrackMan();
+	else return Protester::tryToGetToFrackMan(); //do normal Protester movement otherwise
 
 
 }
