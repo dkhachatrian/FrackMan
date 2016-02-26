@@ -161,7 +161,7 @@ int StudentWorld::init()
 	//setUpDirt();
 
 	//for debugging
-	setAllActorsAsVisible();
+	//setAllActorsAsVisible();
 
 
 	return 1; //change later
