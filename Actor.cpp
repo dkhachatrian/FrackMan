@@ -300,7 +300,7 @@ int Protester::doSomething()
 		setCurrentRestTick(0); //reset rest tick counter
 	}
 
-
+	m_currentNonrestTick++; //for turning
 
 	//see if it's resting
 	if (amIResting()) //if it is, determine why
@@ -426,7 +426,7 @@ GraphObject::Direction Protester::chooseDirection()
 		Direction r_dir = generateRandomDirection();
 		CoordType x = getX(), y = getY();
 		int i = 0;
-		while (getWorld()->isThereDirtInDirectionOfActor(this, r_dir) || !getWorld()->tryToMoveFromLocation(x, y, r_dir)) //shouldn't take more than 20 tries...
+		while (getWorld()->isThereDirtInDirectionOfActor(this, r_dir) && !getWorld()->tryToMoveMe(this, r_dir)) //shouldn't take more than 20 tries...
 		{
 			r_dir = generateRandomDirection();
 		}
@@ -436,7 +436,7 @@ GraphObject::Direction Protester::chooseDirection()
 	}
 	else
 	{
-		if (m_currentNonrestTick > 200)
+		if (m_currentNonrestTick > m_turnPeriod)
 		{
 			Direction d = getWorld()->canITurnAndMove(this);
 			if (d != none)
@@ -454,6 +454,7 @@ GraphObject::Direction Protester::chooseDirection()
 
 GraphObject::Direction Protester::tryToGetToFrackMan() const
 {
+
 	return getWorld()->directLineToFrackMan(this);
 }
 

@@ -168,14 +168,12 @@ public:
 		m_dir = d;
 	}
 
-
-
 	Group whatGroupAmI() const { return m_group; }
 
 
 
 	virtual int doSomething();
-	virtual void attemptToInteractWithActors();
+	void attemptToInteractWithActors();
 
 	//StudentWorld tells the Actor what it's responding to
 	virtual void respondToPlayer(FrackMan* player, double distanceOfInteraction) {};
@@ -207,7 +205,9 @@ public:
 	bool isDead() const { return m_isDead; }
 	bool isVisible()  const { return m_visible; }
 	int getDepth() const { return m_depth; }
+	GraphObject::Direction getDir() const { return m_dir; }
 
+	StudentWorld* getWorld() const { return m_sw; }
 
 
 	//let StudentWorld kill the Actors when cleaning up
@@ -231,8 +231,6 @@ protected:
 	virtual void Actor::performTickAction();
 	void setVisibleFlag(bool x) { m_visible = x; }
 
-
-	StudentWorld* getWorld() const { return m_sw; }
 
 
 	//calls StudentWorld
@@ -308,19 +306,9 @@ public:
 	{};
 
 	virtual bool attemptMove(const Direction dir);
-	virtual bool doSpecializedAction() { return false; }
-	
-	//bool setDir(Direction dir) {}; //covered by GraphObject::setDirection(Direction d);
 
 
-	//changes x_s,y_s (copies of the coordinates of Actor who called it)
-	// to where the Actor wants to go.
-	// Returns true if no boundary or solid object (i.e. Boulder) is in the way, false otherwise.
-	//virtual bool canMoveInDirection(const Direction dir, int& x, int& y);
-
-
-	// Does not change anything
-	virtual bool moveMatchesDir(const Direction moveDir) const { return (GraphObject::getDirection() == moveDir); }
+	virtual bool moveMatchesDir(const Direction moveDir) const { return (getDir() == moveDir); }
 
 protected:
 
@@ -360,6 +348,7 @@ public:
 
 
 };
+
 
 
 

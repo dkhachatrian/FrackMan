@@ -7,6 +7,9 @@ using namespace std;
 
 #include "GraphObject.h" //so it knows what Direction's are
 
+#include <queue>
+#include <iostream>
+
 //helper functions
 int min(int x, int y);
 int max(int x, int y);
@@ -1040,121 +1043,6 @@ GraphObject::Direction StudentWorld::canITurnAndMove(const Actor* caller) const
 
 
 }
-/*
-bool StudentWorld::bribeEnemy(const Actor* caller) const
-{
-	CoordType x, y;
-	caller->sendLocation(x, y);
-
-	for (int i = 0; i < m_actors.size(); i++)
-	{
-		Actor* p = m_actors[i];
-		if (isActorAffectedByActor(caller, m_actors[i], INTERACTED) && m_actors[i]->whatGroupAmI() == enemies)
-		{
-			m_actors[i]->bribeMe();
-			return true;
-		}
-	}
-
-	return false;
-}
-*/
-
-// Students:  Add code to this file (if you wish), StudentWorld.h, Actor.h and Actor.cpp
-
-//a is always a dynamicObject 
-
-/*
-//overlap compares the bottom-left corner of each sprite to determine overlap (should always be a valid comparison)
-int StudentWorld::overlap(const Actor* a, const Actor* b) const
-{
-	//if the Actors are far away...
-	CoordType xa, ya, xb, yb;
-
-	a->putAtSpriteCorner(DEFAULT_CORNER, xa, ya);
-	b->putAtSpriteCorner(DEFAULT_CORNER, xb, yb);
-
-	double dist = distance(xa, ya, xb, yb);
-
-	if (dist > (a->getMaxLength() + b->getMaxLength()))
-		return EXISTS_GAP; //there must be a gap. Skip all the extra stuff below
-
-
-	Corner relLoc = a->relativeLocationTo(b);
-
-	if (relLoc == NA)
-		return OVERLAPPING; //if at the same place, definitely overlapping
-
-	//CoordType x_low, x_high, y_low, y_high;
-	CoordType x, y;
-
-	b->putAtSpriteCorner(relLoc, x, y);
-
-	if (a->isInsideMySprite(x, y))
-		return OVERLAPPING;
-
-	bool atSide;
-
-	//consider boundary cases of 'touching'
-	switch (relLoc) //of a compared to b
-	{
-	case bottom_left:
-						// b is directly to the right of a		 and		b is near a vertically
-		atSide = ( ((a->getX() + a->getWidth()) == b->getX()) && ((b->getY() - a->getY()) < a->getHeight() ));
-		break;
-	case bottom_right:
-		atSide = (((a->getX() - a->getWidth()) == b->getX()) && ((b->getY() - a->getY()) < a->getHeight()));
-		break;
-	case top_left:
-		atSide = (((a->getY() + a->getHeight()) == b->getY()) && ((b->getX() - a->getX()) < a->getWidth()));
-		break;
-	case top_right:
-		atSide = (((a->getY() + a->getHeight()) == b->getY()) && ((b->getX() - a->getX()) < a->getWidth()));
-		break;
-	}
-
-	if (atSide)
-		return TOUCHING;
-
-	//if it's not overlapping or touching, there must be a gap!
-
-	return EXISTS_GAP;
-
-		/*
-		//cases below do the best they can to make (x_low, y_low) be more toward the specified corner than (x_high, y_high)
-		//	if x_this < x_other (i.e. this is "bottom"), this->putAtSpriteCorner(top____, x_low, ...)
-		//						                  else   other->putAtSpriteCorner(top____, x_low, ...)
-	case bottom_left:
-		a->putAtSpriteCorner(top_right, x_low, y_low);
-		b->putAtSpriteCorner(bottom_left, x_high, y_high);
-		break;
-	case top_left:
-		a->putAtSpriteCorner(bottom_right, x_low, y_high);
-		b->putAtSpriteCorner(top_left, x_high, y_low);
-		break;
-	case bottom_right:
-		a->putAtSpriteCorner(top_left, x_high, y_low);
-		b->putAtSpriteCorner(bottom_right, x_low, y_high);
-		break;
-	case top_right:
-		a->putAtSpriteCorner(bottom_left, x_high, y_high);
-		b->putAtSpriteCorner(top_right, x_low, y_low);
-		break;
-	}
-
-	CoordType dx = x_high - x_low;
-	CoordType dy = y_high - y_low;
-
-	// "Touching" is when (x_high - x_low) == 1
-	// will subtract 1 from dx and dy so we can base our logic around 0
-	dx--;
-	dy--;
-	
-	//if either dx or dy are less
-
-	
-}
-*/
 
 double StudentWorld::distanceBetweenActors(const Actor* a, const Actor* b) const
 {
@@ -1220,10 +1108,22 @@ void StudentWorld::letPlayerFireASquirt()
 		break;
 	}
 
+	bool canExist = true;
+
 	if (isThereSpaceForAnActorHere(x + dx, y + dy))
 	{
-		Squirt* p = new Squirt(x + dx, y + dy, this, m_player->getDirection());
-		m_actors.push_back(p);
+		for (int i = 0; i < dx; i++)
+			for (int j = 0; j < dy; j++)
+				if (isThereABoulderAt(x + i, y + j))
+				{
+					canExist = false;
+					break;
+				}
+		if (canExist)
+		{
+			Squirt* p = new Squirt(x + dx, y + dy, this, m_player->getDirection());
+			m_actors.push_back(p);
+		}
 	}
 	playSound(SOUND_PLAYER_SQUIRT);
 	m_player->changeSquirtsBy(-1);
@@ -1240,8 +1140,7 @@ GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Actor* caller,
 	return howToGetFromLocationToGoal(x, y, x_goal, y_goal);
 }
 
-#include <queue>
-#include <iostream>
+
 const char WALL = 'X';
 const char BREADCRUMB = '#';
 const char PATH = '.';
@@ -1272,127 +1171,8 @@ void print2DCharArray(char arr[][Y_UPPER_BOUND + 1])
 GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
 {
 	int x = 0;
-	return howToGetFromLocationToGoal(x_actor, y_actor, x_goal, y_goal, x); //if just want Direction, x is a throwaway variable
-}
-
-GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps) const
-{
-	//return GraphObject::right;
-
-
-	std::queue<Coord> s;
-
-	//std::vector<GraphObject::Direction> steps; //will store correct steps to leave,
-	//give total number of steps with size()
-
-	char a[X_UPPER_BOUND + 1][Y_UPPER_BOUND + 1];
-
-	//determine all the spots the Actor cannot go
-
-	for (int j = 0; j <= Y_UPPER_BOUND; j++)
-		for (int i = 0; i <= X_UPPER_BOUND; i++)
-		{
-			if (isThereDirtAt(i, j))
-				a[i][j] = WALL;
-			else if (isThereABoulderAt(i, j))
-			{
-
-				for (int k = -DISTANCE_INTERACT; k < DISTANCE_INTERACT; k++)
-					for (int l = -DISTANCE_INTERACT; l < DISTANCE_INTERACT; l++)
-						if (!isInvalidLocation(i + k, j + l) && distance(i, j, i + k, j + l) <= DISTANCE_INTERACT)
-							a[i + k][j + l] = WALL;
-			}
-			else
-			{
-				if (isThereSpaceForAnActorHere(i, j))
-					a[i][j] = PATH;
-				else a[i][j] = WALL; //if can't fit, essentially a wall.
-			}
-		}
-
-
-	//to obtain Direction, will have to work backwards, from Goal to Actor
-	// When they finally match, return the opposite direction of that used to reach the Actor
-	//
-
-
-	a[x_actor][y_actor] = GOAL;
-	a[x_goal][y_goal] = BREADCRUMB;
-
-
-	//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
-
-	Coord c = Coord(x_goal, y_goal);
-
-	CoordType x, y;
-
-	numberOfSteps = 0; //if already at goal, takes 0 steps
-
-	if (x_goal == x_actor && y_goal == y_actor) //check to see if we're already there
-		return GraphObject::none;
-
-	//std::queue<int> test;
-	//test.push(3);
-
-	s.push(c);
-	//steps.push_back(GraphObject::none);
-
-	while (!s.empty())
-	{
-		numberOfSteps++; //every round through this while loop necessarily takes us one step closer to the goal
-		c = s.front();
-		s.pop();
-		//steps.erase(steps.begin()); //removes first element, corresponding to the first Coord
-		x = c.m_x, y = c.m_y;
-		//print2DCharArray(a); //since using as 2D array, parameters for function is a char[][Y_UPPER_BOUND+1]
-		a[x][y] = BREADCRUMB;
-
-
-		if (a[x + LEFT_DIR][y] == GOAL) //if the 'goal' Actor would have to move left to get to the 'caller' Actor
-			return GraphObject::right; //the caller should move the opposite of left, i.e., right
-		else if (a[x + LEFT_DIR][y] == PATH) //otherwise, if I can move there
-		{
-			Coord d(x + LEFT_DIR, y); //push the Coordinate to the queue
-			s.push(d);
-			//steps.push_back(GraphObject::right); //push *opposite* direction to vector
-		}
-		//repeat thought process for all four cardinal directions
-		if (a[x][y + DOWN_DIR] == GOAL)
-			return GraphObject::up;
-		else if (a[x][y + DOWN_DIR] == PATH)
-		{
-			Coord d(x, y + DOWN_DIR);
-			s.push(d);
-			//steps.push_back(GraphObject::up); //push *opposite* direction to vector
-
-		}
-
-		if (a[x + RIGHT_DIR][y] == GOAL)
-			return GraphObject::left;
-		else if (a[x + RIGHT_DIR][y] == PATH)
-		{
-			Coord d(x + RIGHT_DIR, y);
-			s.push(d);
-			//steps.push_back(GraphObject::left); //push *opposite* direction to vector
-
-		}
-
-		if (a[x][y + UP_DIR] == GOAL)
-			return GraphObject::down;
-		else if (a[x][y + UP_DIR] == PATH)
-		{
-			Coord d(x, y + UP_DIR);
-			s.push(d);
-			//steps.push_back(GraphObject::down); //push *opposite* direction to vector
-
-		}
-
-	}
-
-	//if made it here and didn't return already, can't make it back
-	//(which is worrisome, since there should always be a way back...)
-	return GraphObject::none;
-
+	int y = INT_MAX;
+	return howToGetFromLocationToGoal(x_actor, y_actor, x_goal, y_goal, x, y); //if just want Direction, x is a throwaway variable
 }
 
 
@@ -1402,9 +1182,6 @@ bool StudentWorld::isInvalidLocation(Coord c) const
 }
 
 
-//#include <map>
-//#include <multimap>
-#include <list>
 GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const
 {
 	//return GraphObject::right;
@@ -1492,6 +1269,8 @@ GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_acto
 	//coordToStep[curr] = numberOfSteps; // 0
 	int i = 0;
 
+
+
 	while (!toBeChecked.empty() && (numberOfSteps <= maxDepth))
 	{
 		//nums.push_back(numberOfSteps);
@@ -1550,23 +1329,6 @@ GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_acto
 }
 
 
-
-int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const
-{
-	int i = 0;
-	while (x_actor != x_goal || y_actor != y_goal)
-	{
-		GraphObject::Direction d = howToGetFromLocationToGoal(x_actor, y_actor, x_goal, y_goal);
-		if (d != GraphObject::none)
-		{
-			i++;
-			moveCoordsInDirection(x_actor, y_actor, d);
-		}
-		//then it calls the maze-solving algorithm again and again, until it reaches the goal
-	}
-
-	return i;
-}
 
 bool StudentWorld::isThereABoulderAt(CoordType x, CoordType y) const
 {
