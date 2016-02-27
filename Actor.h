@@ -426,6 +426,8 @@ public:
 	void setResting(bool x) { m_resting = x; }
 
 
+	virtual GraphObject::Direction Protester::chooseDirection();
+
 	//void Protester::setAnnoyedRestTickMax(int x) = {m_annoyed}
 
 	virtual void setRestTick();
