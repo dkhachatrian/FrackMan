@@ -170,7 +170,7 @@ public:
 
 	void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller);
 
-	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const;
+	//GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const;
 
 
 
@@ -255,21 +255,20 @@ public:
 		return false;
 	}
 
+	GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Coord caller, const Coord goal) const;
 
-	GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Actor* caller, CoordType x_goal, CoordType y_goal) const;
-
-	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const;
-
-	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps) const;
+	GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Coord caller, const Coord goal, int& numberOfSteps, int maxDepth) const;
 
 
-	int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int maxDepth) const;
+
+	//int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int maxDepth) const;
 
 	bool StudentWorld::isThereSpaceForAnActorHere(CoordType x, CoordType y) const;
 
-	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(int x_start, int y_start, int x_current, int y_current, int x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordMap) const;
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(Coord start, Coord curr, Coord goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordToOrig) const;
 
-	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(Coord start, Coord curr, Coord goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordMap) const;
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(Coord start, Coord curr, Coord goal, int& numberOfSteps, int maxDepth) const;
+
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
 	bool StudentWorld::tryToMoveMe(DynamicObject* caller, const GraphObject::Direction moveDir);

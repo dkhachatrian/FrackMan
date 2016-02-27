@@ -589,7 +589,7 @@ int Protester::doSomething()
 			return DEAD;
 		}
 		//otherwise, head over there
-		dir = getWorld()->tellMeHowToGetToMyGoal(this, X_UPPER_BOUND, Y_UPPER_BOUND);
+		dir = getWorld()->tellMeHowToGetToMyGoal(this->getCoord(), Coord(X_UPPER_BOUND, Y_UPPER_BOUND));
 		attemptMove(dir);
 		return MOVED;
 		break;
@@ -855,6 +855,7 @@ void HardcoreProtester::respondToSquirt(Squirt* squirt, double distanceOfInterac
 	}
 }
 
+/*
 // will stop counting how far away it is after going past getDetectionRange() depth
 int HardcoreProtester::howFarAwayAmIFromFrackMan() const
 {
@@ -866,7 +867,7 @@ int HardcoreProtester::howFarAwayAmIFromFrackMan() const
 	//getWorld()->howToGetFromLocationToGoal(x, y, a, b, numberOfSteps, getDetectionRange()); //will stop if numberOfSteps == getDetectionRange()
 	//return numberOfSteps;
 }
-
+*/
 
 
 //so now I don't need to do anything fancy
@@ -891,15 +892,17 @@ GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const
 	//if (getWorld()->distanceBetweenActors(this, getWorld()->getPlayer()) > getDetectionRange()) //no reason to use taxing method
 	//	Protester::tryToGetToFrackMan();
 
-	CoordType x_a, x_p, y_a, y_p;
-	sendLocation(x_a, y_a);
-	getWorld()->getPlayer()->sendLocation(x_p, y_p);
+	//CoordType x_a, x_p, y_a, y_p;
+	//sendLocation(x_a, y_a);
+	//getWorld()->getPlayer()->sendLocation(x_p, y_p);
+	Coord me = getCoord();
+	Coord player = getWorld()->getPlayer()->getCoord();
+	int numberOfSteps = 0;
 
-	if (howFarAwayAmIFromFrackMan() < getDetectionRange())
-	{
-		Direction d = getWorld()->tellMeHowToGetToMyGoal(this, x_p, y_p);
+	Direction d = getWorld()->tellMeHowToGetToMyGoal(me, player, numberOfSteps, getDetectionRange());
+
+	if (d != none)
 		return d;
-	}
 	else return Protester::tryToGetToFrackMan();
 
 

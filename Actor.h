@@ -69,7 +69,9 @@ struct Coord
 	CoordType x() const { return m_x; }
 	CoordType y() const { return m_y; }
 
-	bool operator==(Coord other) { return (x() == other.x() && y() == other.y()); }
+	bool operator==(const Coord other) const { return (x() == other.x() && y() == other.y()); }
+
+	bool operator<(const Coord other) const { return (x() < other.x()); } //only used to be able to use a Map
 
 	CoordType m_x, m_y;
 };
@@ -167,6 +169,8 @@ public:
 	virtual ~Actor() { setVisible(false); }
 
 	Group whatGroupAmI() const { return m_group; }
+
+	Coord getCoord() const { return Coord(getX(), getY()); }
 
 	//doSomething()
 	virtual int doSomething();
