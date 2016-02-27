@@ -36,11 +36,6 @@ const int DOWN_DIR = -1;
 const int LEFT_DIR = -1;
 const int RIGHT_DIR = 1;
 
-//for putAtSpriteCorner
-enum Corner {bottom_left, bottom_right, top_right, top_left, NA};
-//for StudentWorld::overlap()
-const std::vector<Corner> corners = { bottom_left, bottom_right, top_right, top_left };
-const Corner DEFAULT_CORNER = bottom_left;
 
 const int TOUCHING = 0;
 const int OVERLAPPING = -1;
@@ -195,23 +190,6 @@ public:
 	bool Actor::isThereDirtNextToMeInDirection(Direction dir) const;
 	bool Actor::isThereDirtNextToMeInCurrentDirection() const;
 
-	//to be used for overlap function
-	double getMaxLength() const;
-
-	//Gives "effective" (x,y) based on sprite size and current direction
-	//Returns true if the input parameters x or y were changed. Otherwise returns false.
-	bool sendEffectiveLocation(CoordType& x, CoordType& y, const Direction dir) const;
-
-	// Reverses the actions of sendToEffectiveLocation on the parameters x and y
-	void reverseTransform(CoordType& x, CoordType& y, const Direction dir) const;
-
-	void putAtSpriteCorner(Corner c, CoordType& x, CoordType& y) const;
-
-	bool isInsideMySprite(const CoordType& x, const CoordType& y) const;
-
-	Corner relativeLocationTo(const Actor* other) const;
-
-//	bool doITick() const { return m_doITick; }
 
 	void die() { m_isDead = true; }
 

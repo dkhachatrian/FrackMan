@@ -748,7 +748,7 @@ void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller)
 	{
 		if (caller == m_player)
 			break; //don't match player with itself
-		if (distance(x1, y1, x2, y2) < DISTANCES[k])
+		if (distance(x1, y1, x2, y2) <= DISTANCES[k])
 		{
 			caller->respondToPlayer(m_player, DISTANCES[k]);
 		}
