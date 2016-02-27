@@ -170,7 +170,7 @@ public:
 
 	void StudentWorld::attemptToInteractWithNearbyActors(Actor* caller);
 
-	//GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const;
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps, int maxDepth) const;
 
 
 
@@ -255,19 +255,19 @@ public:
 		return false;
 	}
 
-	GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Coord caller, const Coord goal) const;
 
-	GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Coord caller, const Coord goal, int& numberOfSteps, int maxDepth) const;
+	GraphObject::Direction StudentWorld::tellMeHowToGetToMyGoal(const Actor* caller, CoordType x_goal, CoordType y_goal) const;
+
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const;
+
+	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int& numberOfSteps) const;
+
+	bool StudentWorld::isInvalidLocation(Coord c) const;
 
 
-
-	//int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal, int maxDepth) const;
+	int StudentWorld::numberOfStepsFromLocationToGoal(CoordType x_actor, CoordType y_actor, CoordType x_goal, CoordType y_goal) const;
 
 	bool StudentWorld::isThereSpaceForAnActorHere(CoordType x, CoordType y) const;
-
-	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(Coord start, Coord curr, Coord goal, int& numberOfSteps, int maxDepth, std::map<Coord, Coord> coordToOrig) const;
-
-	GraphObject::Direction StudentWorld::howToGetFromLocationToGoal(Coord start, Coord curr, Coord goal, int& numberOfSteps, int maxDepth) const;
 
 
 	//bool StudentWorld::attemptMove(DynamicObject* caller, const GraphObject::Direction dir);
@@ -301,9 +301,6 @@ public:
 	void StudentWorld::setAllActorsAsVisible();
 
 	bool isInvalidLocation(int x, int y) const { return (x < 0 || x > X_UPPER_BOUND || y < 0 || y > Y_UPPER_BOUND); }
-	bool isInvalidLocation(Coord c) const;
-
-
 
 	int overlap(const Actor* a, const Actor* b) const;
 

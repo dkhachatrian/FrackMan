@@ -22,15 +22,16 @@ c:\vs2015\frackman\frackman\studentworld.cpp(923): warning C4018: '<': signed/un
 c:\vs2015\frackman\frackman\studentworld.cpp(1171): warning C4101: 'y1': unreferenced local variable
 c:\vs2015\frackman\frackman\studentworld.cpp(1171): warning C4101: 'x1': unreferenced local variable
 c:\vs2015\frackman\frackman\studentworld.cpp(1180): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(1244): warning C4101: 'y': unreferenced local variable
-c:\vs2015\frackman\frackman\studentworld.cpp(1244): warning C4101: 'x': unreferenced local variable
-c:\vs2015\frackman\frackman\studentworld.cpp(1590): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(1635): warning C4244: 'initializing': conversion from 'const double' to 'int', possible loss of data
-c:\vs2015\frackman\frackman\studentworld.cpp(1636): warning C4244: 'initializing': conversion from 'const double' to 'int', possible loss of data
-c:\vs2015\frackman\frackman\studentworld.cpp(1680): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(1727): warning C4018: '<': signed/unsigned mismatch
-c:\vs2015\frackman\frackman\studentworld.cpp(1832): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(1300): warning C4244: 'initializing': conversion from 'const double' to 'int', possible loss of data
+c:\vs2015\frackman\frackman\studentworld.cpp(1301): warning C4244: 'initializing': conversion from 'const double' to 'int', possible loss of data
+c:\vs2015\frackman\frackman\studentworld.cpp(1429): warning C4244: 'initializing': conversion from 'const double' to 'int', possible loss of data
+c:\vs2015\frackman\frackman\studentworld.cpp(1430): warning C4244: 'initializing': conversion from 'const double' to 'int', possible loss of data
+c:\vs2015\frackman\frackman\studentworld.cpp(1523): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(1454): warning C4101: 'y': unreferenced local variable
+c:\vs2015\frackman\frackman\studentworld.cpp(1454): warning C4101: 'x': unreferenced local variable
+c:\vs2015\frackman\frackman\studentworld.cpp(1572): warning C4018: '<': signed/unsigned mismatch
+c:\vs2015\frackman\frackman\studentworld.cpp(1677): warning C4018: '<': signed/unsigned mismatch
 c:\vs2015\frackman\frackman\studentworld.cpp(546): warning C4715: 'StudentWorld::isThereDirtInDirection': not all control paths return a value
-c:\vs2015\frackman\frackman\studentworld.cpp(1772): warning C4715: 'StudentWorld::amIFacingFrackMan': not all control paths return a value
-c:\vs2015\frackman\frackman\studentworld.cpp(1819): warning C4715: 'StudentWorld::directLineToFrackMan': not all control paths return a value
+c:\vs2015\frackman\frackman\studentworld.cpp(1617): warning C4715: 'StudentWorld::amIFacingFrackMan': not all control paths return a value
+c:\vs2015\frackman\frackman\studentworld.cpp(1664): warning C4715: 'StudentWorld::directLineToFrackMan': not all control paths return a value
   FrackMan.vcxproj -> C:\VS2015\FrackMan\Debug\FrackMan.exe

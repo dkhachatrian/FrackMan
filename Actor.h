@@ -10,11 +10,15 @@
 
 class StudentWorld;
 class Protester;
+class HardcoreProtester;
 class Goodie;
 class Gold;
 class FrackMan;
 class Squirt;
 class Boulder;
+class Water;
+class Sonar;
+
 
 
 
@@ -36,11 +40,6 @@ const int DOWN_DIR = -1;
 const int LEFT_DIR = -1;
 const int RIGHT_DIR = 1;
 
-//for putAtSpriteCorner
-enum Corner {bottom_left, bottom_right, top_right, top_left, NA};
-//for StudentWorld::overlap()
-const std::vector<Corner> corners = { bottom_left, bottom_right, top_right, top_left };
-const Corner DEFAULT_CORNER = bottom_left;
 
 const int TOUCHING = 0;
 const int OVERLAPPING = -1;
@@ -71,7 +70,8 @@ struct Coord
 
 	bool operator==(const Coord other) const { return (x() == other.x() && y() == other.y()); }
 
-	bool operator<(const Coord other) const { return (x() < other.x()); } //only used to be able to use a Map
+	bool operator<(const Coord other) const { return (x() < other.x() && y() < other.y()); }
+
 
 	CoordType m_x, m_y;
 };
@@ -152,30 +152,32 @@ public:
 		//setVisible(true); //by default
 	}
 
+
+	virtual ~Actor() { setVisible(false); }
+
+
+	//allow StudentWorld to set visibility or direction if needed
 	inline void setVisibility(bool x)
 	{
 		setVisible(x);
 		setVisibleFlag(x);
 	}
-
 	inline void setDir(Direction d)
 	{
 		setDirection(d);
 		m_dir = d;
 	}
-	//virtual void performGiveUpAction() {};
-	//virtual void bribeMe() {}; //only protesters get bribed. Done to allow int
-	
-	virtual ~Actor() { setVisible(false); }
+
+
 
 	Group whatGroupAmI() const { return m_group; }
 
-	Coord getCoord() const { return Coord(getX(), getY()); }
 
-	//doSomething()
+
 	virtual int doSomething();
 	virtual void attemptToInteractWithActors();
-	//virtual void interactWithActor(const Actor* other, double distanceOfInteraction);
+
+	//StudentWorld tells the Actor what it's responding to
 	virtual void respondToPlayer(FrackMan* player, double distanceOfInteraction) {};
 	virtual void respondToEnemy(Protester* enemy, double distanceOfInteraction) {};
 	virtual void respondToSquirt(Squirt* squirt, double distanceOfInteraction) {};
@@ -183,20 +185,22 @@ public:
 	virtual void respondToGoodie(Goodie* goodie, double distanceOfInteraction) {};
 	virtual void respondToBribe(Gold* bribe, double distanceOfInteraction) {};
 
-	virtual void Actor::performTickAction();
+
 
 
 
 	//virtual int doSomething();
 	
 	//gives bottom-left corner (i.e. what's returned by getX/Y)
+	//for location
 	void sendLocation(CoordType& x, CoordType& y) const
 	{
 		x = getX();
 		y = getY();
 	}
+	Coord getCoord() const { return Coord(getX(), getY()); }
 
-	StudentWorld* getWorld() const { return m_sw; }
+
 	int getIdentity() const{ return m_id; }
 	int getWidth() const { return m_width; }
 	int getHeight() const { return m_height; }
@@ -206,35 +210,16 @@ public:
 
 
 
-	bool Actor::isThereDirtNextToMeInDirection(Direction dir) const;
-	bool Actor::isThereDirtNextToMeInCurrentDirection() const;
-
-	//to be used for overlap function
-	double getMaxLength() const;
-
-	//Gives "effective" (x,y) based on sprite size and current direction
-	//Returns true if the input parameters x or y were changed. Otherwise returns false.
-	bool sendEffectiveLocation(CoordType& x, CoordType& y, const Direction dir) const;
-
-	// Reverses the actions of sendToEffectiveLocation on the parameters x and y
-	void reverseTransform(CoordType& x, CoordType& y, const Direction dir) const;
-
-	void putAtSpriteCorner(Corner c, CoordType& x, CoordType& y) const;
-
-	bool isInsideMySprite(const CoordType& x, const CoordType& y) const;
-
-	Corner relativeLocationTo(const Actor* other) const;
-
-//	bool doITick() const { return m_doITick; }
-
+	//let StudentWorld kill the Actors when cleaning up
 	void die() { m_isDead = true; }
 
 
-
 protected:
+
+	//only Actors need to see these
+
 	void setIdentityAs(int id) {m_id = id;}
 	void setGroupAs(Group g) { m_group = g; }
-	//helper functions
 
 	//ticking
 	void countDownATick() { m_ticksLeft--; }
@@ -243,8 +228,18 @@ protected:
 	void setTickNumber(int x) { m_ticksLeft = x; }
 	int getTickNumber() const { return m_ticksLeft; }
 
-
+	virtual void Actor::performTickAction();
 	void setVisibleFlag(bool x) { m_visible = x; }
+
+
+	StudentWorld* getWorld() const { return m_sw; }
+
+
+	//calls StudentWorld
+	bool Actor::isThereDirtNextToMeInDirection(Direction dir) const;
+	bool Actor::isThereDirtNextToMeInCurrentDirection() const;
+
+
 
 
 private:
@@ -306,6 +301,9 @@ public:
 		m_hp = 0;
 	};
 
+
+	int getHealth() const { return m_hp; }
+
 	virtual ~DynamicObject()
 	{};
 
@@ -314,14 +312,6 @@ public:
 	
 	//bool setDir(Direction dir) {}; //covered by GraphObject::setDirection(Direction d);
 
-
-	int getHealth() const { return m_hp; }
-	void changeHealthBy(int x) { m_hp += x; }
-
-	bool didIDie() const { return m_hp <= 0; }
-
-	
-	virtual void getHurt(int damage) {}; //not all DynamicObjects get hurt, but both FrackMan and the Protesters do
 
 	//changes x_s,y_s (copies of the coordinates of Actor who called it)
 	// to where the Actor wants to go.
@@ -335,6 +325,15 @@ public:
 protected:
 
 	void setHealth(int hp) { m_hp = hp; }
+
+
+	void changeHealthBy(int x) { m_hp += x; }
+
+	bool didIDie() const { return m_hp <= 0; }
+
+
+	virtual void getHurt(int damage) {}; //not all DynamicObjects get hurt, but both FrackMan and the Protesters do
+
 
 private:
 
@@ -413,10 +412,8 @@ public:
 	//bool removeDirt(const Direction dir, const int& x, const int& y);
 
 protected:
-	virtual void setAnnoyed() {};
 	//virtual bool setDir(int dir);
 private:
-
 	int m_squirts;
 	int m_gold;
 	int m_sonar;
@@ -462,11 +459,13 @@ public:
 	void setResting(bool x) { m_resting = x; }
 
 
+	virtual GraphObject::Direction Protester::chooseDirection();
+
 	//void Protester::setAnnoyedRestTickMax(int x) = {m_annoyed}
 
 	virtual void setRestTick();
 
-	//virtual void respondToGold();
+	//virtual void respondToActor();
 	int getDirTimes() const { return m_numTimesCurrentDir; }
 
 	//void resetTick(int& t) { t = 0; }
@@ -550,6 +549,7 @@ public:
 	virtual GraphObject::Direction HardcoreProtester::tryToGetToFrackMan() const;
 
 
+	//virtual Direction tryToGetToFrackMan() const;
 
 protected:
 	void setDetectionRange();
@@ -595,7 +595,6 @@ public:
 		//setVisible(false); //most start off invisible
 		//setVisibleFlag(false);
 		m_score = score;
-		m_whoCanPickMeUp = player;
 		setGroupAs(goodies);
 		//m_doITick = false; //most don't tick
 	}
@@ -609,21 +608,16 @@ public:
 	virtual void respondToEnemy(Protester* enemy, double distanceOfInteraction) {};
 
 
-	//virtual void respondToPlayer() = 0;
-
 	//picking up Goodies gives a score...
 	int giveScore() const { return m_score; }
-	Group whoCanPickMeUp() const { return m_whoCanPickMeUp; }
 
 	//virtual bool shouldITick() const { return m_doITick; } 
 
 
 protected:
 	void setScore(int score) { m_score = score; }
-	void setPickUpGroup(Group g) { m_whoCanPickMeUp = g; }
 private:
 	int m_score;
-	Group m_whoCanPickMeUp;
 };
 
 class Sonar : public Goodie
